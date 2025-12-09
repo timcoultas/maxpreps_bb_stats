@@ -40,7 +40,7 @@ def main():
         df = pd.DataFrame(all_data)
         
         # Organize Columns
-        fixed_cols = ['Season', 'Team', 'Level', 'Source_File', 'Name', 'Athlete_ID']
+        fixed_cols = ['Season', 'Team', 'Level', 'Source_File', 'Name', 'Class_Year', 'Athlete_ID']
         schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]
         final_cols = fixed_cols + [c for c in schema_cols if c in df.columns]
         
@@ -52,7 +52,7 @@ def main():
         df.to_csv(out_name, index=False)
         
         print("\nSUCCESS!")
-        print(df.to_string())
+        print(df.to_csv())
         print(f"Saved to {out_name}")
 
 if __name__ == "__main__":

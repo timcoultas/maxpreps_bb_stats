@@ -1,4 +1,5 @@
 # src/stat_extraction.py
+
 import re
 from src.config import STAT_SCHEMA
 
@@ -27,11 +28,28 @@ def extract_player_data(soup, metadata):
                 
                 # 2. Upsert (Create if new)
                 if athlete_id not in roster:
+                    
+                    ### [START NEW CODE] --------------------------------------
+                    # We need to grab the Full Name (title attribute) and Class Year (neighbor tag)
+                    full_name = link_tag.get('title', link_tag.text.strip()) 
+                    
+                    # Look for the <abbr> tag that sits right next to the link
+                    class_tag = link_tag.find_next('abbr', class_='class-year')
+                    class_year = class_tag.get('title', 'Unknown') if class_tag else 'Unknown'
+                    ### [END NEW CODE] ----------------------------------------
+
                     roster[athlete_id] = {
                         # Add Metadata Context
                         **metadata,
+                        
                         # Player Identity
+                        ### [MODIFIED LINE] Changed 'Name' to use full_name
+                        'Full_Name': full_name, 
+                        
+                        ### [NEW LINES] Added Display_Name and Class_Year
                         'Name': link_tag.text.strip(),
+                        'Class_Year': class_year,
+                        
                         'Athlete_ID': athlete_id,
                         # Initialize Config Columns to None
                         **{stat['abbreviation']: None for stat in STAT_SCHEMA}
