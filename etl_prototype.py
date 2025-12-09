@@ -2,6 +2,8 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import os
 
+#test comment for git
+
 # 1. Define the path (The "Connection String")
 file_path = 'data/raw/rocky_25.html'
 
