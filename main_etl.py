@@ -30,7 +30,7 @@ def process_file(file_path):
 def main():
     # --- INPUTS ---
     # Later, we can change this to look at a whole folder
-    target_file = 'data/raw/rocky_25.html'
+    target_file = 'data/raw/rocky_mountain/rocky_25.html'
     
     # --- EXECUTION ---
     all_data = process_file(target_file)
