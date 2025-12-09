@@ -48,7 +48,7 @@ def extract_player_data(soup, metadata):
                         
                         ### [NEW LINES] Added Display_Name and Class_Year
                         'Name': link_tag.text.strip(),
-                        'Class_Year': class_year,
+                        'Class': class_year,
                         
                         'Athlete_ID': athlete_id,
                         # Initialize Config Columns to None
