@@ -6,9 +6,17 @@ import os
 # --- CONFIGURATION: What stats do you want? ---
 # Format: { 'Your_Column_Name': 'html_class_name' }
 STAT_CONFIG = {
-    'Batting_Avg': 'battingaverage stat dw',
-    'Earned_Runs':         'earnedruns stat dw', 
-    'Appearances': 'appearances stat dw'
+    'Batting_Avg':  'battingaverage stat dw',
+    #pitching
+    'Appearances':      'appearances stat dw',
+    'Innings_Pitched':  'inningspitcheddecimal stat dw',
+    'Batters_faced':    'battersfaced stat dw',
+    'Earned_Run_Average':      'earnedrunaverage stat dw', 
+    'Strikeouts':       'battersstruckout stat dw', 
+    'Walks':            'baseonballsagainst stat dw',
+    'Hits':             'hitsagainst stat dw',
+    'Earned_Runs':      'earnedruns stat dw',
+    'Batting_Avg_Against': 'battingaveragepitcher stat dw'
 }
 
 # 1. Setup
