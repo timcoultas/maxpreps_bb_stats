@@ -1,0 +1,8 @@
+# Ignore the virtual environment
+.venv/
+
+# Ignore raw data
+data/
+
+# Ignore Mac system files
+.DS_Store
