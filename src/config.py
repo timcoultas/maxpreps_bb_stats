@@ -9,9 +9,12 @@ STAT_SCHEMA = [
     {"abbreviation": "AB",   "max_preps_class": "atbats stat dw",                  "stat_type": "Batting"},
     {"abbreviation": "AVG",  "max_preps_class": "battingaverage stat dw",          "stat_type": "Batting"},
     {"abbreviation": "H",    "max_preps_class": "hits stat dw",                    "stat_type": "Batting"},
+    {"abbreviation": "2B",    "max_preps_class": "doubles stat dw",                "stat_type": "Batting"},
+    {"abbreviation": "3B",    "max_preps_class": "triples stat dw",                "stat_type": "Batting"},
+    {"abbreviation": "HR",   "max_preps_class": "homeruns stat dw",                "stat_type": "Batting"},
     {"abbreviation": "RBI",  "max_preps_class": "rbi stat dw",                     "stat_type": "Batting"},
     {"abbreviation": "R",    "max_preps_class": "runs stat dw",                    "stat_type": "Batting"},
-    {"abbreviation": "HR",   "max_preps_class": "homeruns stat dw",                "stat_type": "Batting"},
+    {"abbreviation": "SF",    "max_preps_class": "sacrificefly stat dw",            "stat_type": "Batting"},
     {"abbreviation": "BB",   "max_preps_class": "baseonballs stat dw",             "stat_type": "Batting"},
     {"abbreviation": "K",    "max_preps_class": "struckout stat dw",               "stat_type": "Batting"},
     {"abbreviation": "HBP",  "max_preps_class": "hitbypitch stat dw",              "stat_type": "Batting"},
@@ -27,10 +30,15 @@ STAT_SCHEMA = [
     {"abbreviation": "K_P",  "max_preps_class": "battersstruckout stat dw",        "stat_type": "Pitching"},
     {"abbreviation": "ER",   "max_preps_class": "earnedruns stat dw",              "stat_type": "Pitching"},
     {"abbreviation": "H_P",  "max_preps_class": "hitsagainst stat dw",             "stat_type": "Pitching"},
+    {"abbreviation": "2B_P",  "max_preps_class": "doublesagainst stat dw",         "stat_type": "Pitching"},
+    {"abbreviation": "3B_P",  "max_preps_class": "triplesagainst stat dw",         "stat_type": "Pitching"},
+    {"abbreviation": "HR_P",  "max_preps_class": "homerunsagainst stat dw",        "stat_type": "Pitching"},
     {"abbreviation": "BB_P", "max_preps_class": "baseonballsagainst stat dw",      "stat_type": "Pitching"},
     {"abbreviation": "BAA",  "max_preps_class": "battingaveragepitcher stat dw",   "stat_type": "Pitching"}, 
+
     # --- Base Running ---
     {"abbreviation": "SB",  "max_preps_class": "stolenbase stat dw",   "stat_type": "Baserunning"}, 
+
     # --- Fielding --- 
     {"abbreviation": "FP",  "max_preps_class": "fieldingpercentage stat dw",   "stat_type": "Fielding"}, 
     {"abbreviation": "TC",  "max_preps_class": "totalchances stat dw",   "stat_type": "Fielding"}, 
