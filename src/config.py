@@ -28,5 +28,8 @@ STAT_SCHEMA = [
     {"abbreviation": "ER",   "max_preps_class": "earnedruns stat dw",              "stat_type": "Pitching"},
     {"abbreviation": "H_P",  "max_preps_class": "hitsagainst stat dw",             "stat_type": "Pitching"},
     {"abbreviation": "BB_P", "max_preps_class": "baseonballsagainst stat dw",      "stat_type": "Pitching"},
-    {"abbreviation": "BAA",  "max_preps_class": "battingaveragepitcher stat dw",   "stat_type": "Pitching"}
+    {"abbreviation": "BAA",  "max_preps_class": "battingaveragepitcher stat dw",   "stat_type": "Pitching"}, 
+    # --- Base Running ---
+    {"abbreviation": "SB",  "max_preps_class": "stolenbase stat dw",   "stat_type": "Baserunning"}
+    
 ]
