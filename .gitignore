@@ -6,3 +6,5 @@ data/
 
 # Ignore Mac system files
 .DS_Store
+
+__pycache__/
