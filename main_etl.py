@@ -80,7 +80,7 @@ def save_dataframe(data_list, output_folder, file_name):
     
     # --- Column Organization ---
     # Define fixed columns that should always appear on the left
-    fixed_cols = ['Season', 'Team', 'Level', 'Source_File', 'Name', 'Display_Name', 'Class_Year', 'Athlete_ID']
+    fixed_cols = ['Season', 'Team', 'Level', 'Source_File', 'Name', 'Class', 'Athlete_ID']
     
     # Get stat columns from Config to ensure consistency
     schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]

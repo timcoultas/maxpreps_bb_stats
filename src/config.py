@@ -30,6 +30,12 @@ STAT_SCHEMA = [
     {"abbreviation": "BB_P", "max_preps_class": "baseonballsagainst stat dw",      "stat_type": "Pitching"},
     {"abbreviation": "BAA",  "max_preps_class": "battingaveragepitcher stat dw",   "stat_type": "Pitching"}, 
     # --- Base Running ---
-    {"abbreviation": "SB",  "max_preps_class": "stolenbase stat dw",   "stat_type": "Baserunning"}
-    
+    {"abbreviation": "SB",  "max_preps_class": "stolenbase stat dw",   "stat_type": "Baserunning"}, 
+    # --- Fielding --- 
+    {"abbreviation": "FP",  "max_preps_class": "fieldingpercentage stat dw",   "stat_type": "Fielding"}, 
+    {"abbreviation": "TC",  "max_preps_class": "totalchances stat dw",   "stat_type": "Fielding"}, 
+    {"abbreviation": "PO",  "max_preps_class": "putouts stat dw",   "stat_type": "Fielding"}, 
+    {"abbreviation": "A",  "max_preps_class": "assists stat dw",   "stat_type": "Fielding"}, 
+    {"abbreviation": "E",  "max_preps_class": "errors stat dw",   "stat_type": "Fielding"}, 
+    {"abbreviation": "DP",  "max_preps_class": "doubleplays stat dw",   "stat_type": "Fielding"}
 ]
