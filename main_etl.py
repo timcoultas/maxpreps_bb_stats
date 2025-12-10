@@ -181,7 +181,7 @@ def main():
         consolidated_dir = os.path.join('data', 'processed', target_period)
         save_dataframe(consolidated_data, consolidated_dir, "aggregated_stats.csv")
         
-        print("Done. Just keep truckin'.")
+        print("Done. Keep on truckin'.")
     else:
         print("\nNo data found to aggregate.")
 
