@@ -19,8 +19,10 @@ def generate_stat_multipliers():
     """
     1. Loads aggregated history.
     2. Identifies players who played in consecutive years (Match by NAME + TEAM).
-    3. Calculates year-over-year performance multipliers.
-    4. Uses config.py to determine stat types and apply appropriate filters.
+    3. Calculates multipliers for:
+       a) Standard Class Progressions (Freshman -> Sophomore, etc.)
+       b) Varsity Tenure Progressions (Year 1 -> Year 2, etc.)
+    4. Outputs a combined multipliers CSV.
     """
     
     # --- Load Data ---
@@ -36,10 +38,9 @@ def generate_stat_multipliers():
         return
 
     # --- 1. Dynamic Column Handling using Config ---
-    # We only process stats that are defined in our schema AND exist in the CSV.
     available_stats = set(df.columns)
     stat_cols = []
-    stat_types = {} # Map abbreviation -> stat_type (Batting, Pitching, etc.)
+    stat_types = {} 
 
     for stat_def in STAT_SCHEMA:
         abbr = stat_def['abbreviation']
@@ -49,32 +50,35 @@ def generate_stat_multipliers():
 
     print(f"Processing {len(stat_cols)} stats defined in config...")
 
-    # Convert numeric columns to float, coercing errors
+    # Convert numeric columns
     for col in stat_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # Ensure Year is int for math
+    # Ensure Year is int
     if 'Season_Cleaned' in df.columns:
         df['Season_Year'] = pd.to_numeric(df['Season_Cleaned'], errors='coerce')
-        df = df.dropna(subset=['Season_Year']) # Drop rows where year couldn't be parsed
+        df = df.dropna(subset=['Season_Year']) 
         df['Season_Year'] = df['Season_Year'].astype(int)
     else:
-        print("Error: 'Season_Cleaned' column missing from input CSV.")
+        print("Error: 'Season_Cleaned' column missing.")
         return
     
-    # --- Step 2: Create the "Development Curve" (Year N vs Year N+1) ---
-    
-    # PREPARATION: Normalize Names/Teams for matching
-    # Athlete_IDs are unstable across years, so we use Name + Team as the unique identifier.
+    # --- PREPARATION ---
+    # Normalize Names/Teams for matching
     df['Match_Name'] = df['Name'].astype(str).str.strip().str.lower()
     df['Match_Team'] = df['Team'].astype(str).str.strip().str.lower()
     
-    # LOGIC:
-    # We need to compare Player X in Year N (Prev) vs Player X in Year N+1 (Next).
-    df_prev = df.copy()
-    df_prev['Join_Year'] = df_prev['Season_Year'] + 1  # The year we are predicting FOR
+    # --- CALCULATE VARSITY TENURE (Year 1, Year 2, etc.) ---
+    # We sort by Player and Year, then count the cumulative occurrence.
+    # Rank 1 = First year appearing in dataset (Year 1)
+    # Rank 2 = Second year appearing in dataset (Year 2)
+    df = df.sort_values(['Match_Team', 'Match_Name', 'Season_Year'])
+    df['Varsity_Year'] = df.groupby(['Match_Team', 'Match_Name']).cumcount() + 1
     
-    # Merge on Name, Team, and the Calculated Join Year
+    # --- JOIN LOGIC (Self-Join Year N vs Year N+1) ---
+    df_prev = df.copy()
+    df_prev['Join_Year'] = df_prev['Season_Year'] + 1 
+    
     merged = pd.merge(
         df_prev, 
         df, 
@@ -83,84 +87,81 @@ def generate_stat_multipliers():
         suffixes=('_Prev', '_Next')
     )
     
-    print(f"Found {len(merged)} player-seasons with year-over-year data (Matched by Name/Team).")
+    print(f"Found {len(merged)} player-seasons with year-over-year data.")
     
     if len(merged) == 0:
-        print("Warning: Zero matches found. Please check if 'Name' and 'Team' formats are consistent across years.")
+        print("Warning: Zero matches found.")
         return
 
-    valid_transitions = {
-        'Freshman': 'Sophomore',
-        'Sophomore': 'Junior',
-        'Junior': 'Senior'
-    }
-
-    if 'Class_Cleaned_Prev' not in merged.columns or 'Class_Cleaned_Next' not in merged.columns:
-        print("Error: 'Class_Cleaned' column missing.")
-        return
+    # --- DEFINE TRANSITIONS ---
+    # We now have two types of transitions we want to calculate.
     
-    # --- Step 3: Calculate Multipliers ---
+    # 1. Class Transitions (Freshman -> Sophomore)
+    class_transitions = [
+        ('Class', 'Freshman', 'Sophomore'),
+        ('Class', 'Sophomore', 'Junior'),
+        ('Class', 'Junior', 'Senior')
+    ]
+    
+    # 2. Tenure Transitions (Year 1 -> Year 2)
+    tenure_transitions = [
+        ('Tenure', 1, 2),
+        ('Tenure', 2, 3),
+        ('Tenure', 3, 4)
+    ]
+    
+    all_transitions = class_transitions + tenure_transitions
     
     multipliers = []
 
-    for start_class, end_class in valid_transitions.items():
-        # Get the "Cohort": 
-        # 1. Started as Start_Class (e.g., Freshman)
-        # 2. Ended as End_Class (e.g., Sophomore)
-        # We explicitly check the Next Class to avoid data errors (e.g. someone listed as Junior -> Junior)
-        cohort = merged[
-            (merged['Class_Cleaned_Prev'] == start_class) & 
-            (merged['Class_Cleaned_Next'] == end_class)
-        ]
+    for category, start_val, end_val in all_transitions:
         
-        transition_stats = {'Transition': f"{start_class}_to_{end_class}"}
+        # Filter the cohort based on the category (Class vs Tenure)
+        if category == 'Class':
+            cohort = merged[
+                (merged['Class_Cleaned_Prev'] == start_val) & 
+                (merged['Class_Cleaned_Next'] == end_val)
+            ]
+            trans_name = f"{start_val}_to_{end_val}"
+        else: # Tenure
+            cohort = merged[
+                (merged['Varsity_Year_Prev'] == start_val) & 
+                (merged['Varsity_Year_Next'] == end_val)
+            ]
+            trans_name = f"Varsity_Year{start_val}_to_Year{end_val}"
+
+        # --- DEBUG VIEW (Specific Requests) ---
+        if (category == 'Class' and start_val == 'Junior' and end_val == 'Senior'):
+             print(f"\n--- DEBUG: {trans_name} (n={len(cohort)}) ---")
+             # (Existing debug logic omitted for brevity unless needed, but keeping simple print)
+
+        transition_stats = {'Transition': trans_name, 'Type': category}
         
         for col in stat_cols:
             subset = cohort.copy()
-            st_type = stat_types.get(col, 'Batting') # Default to Batting if unknown
+            st_type = stat_types.get(col, 'Batting')
             
             # --- FILTERING LOGIC ---
-            # We filter out players with small sample sizes in the previous year.
-            # Rationale: Small samples (e.g., 1 AB) create noisy, unreliable multipliers (e.g. 1 Hit / 1 AB = 1.000 Avg).
-            
-            # 1. Pitching Stats: Filter by Innings Pitched (IP)
             if st_type == 'Pitching':
                 if 'IP_Prev' in subset.columns:
-                    subset = subset[subset['IP_Prev'] >= 5] # Minimum 5 innings
-                else:
-                    continue 
-
-            # 2. Batting/Running/Fielding Stats: Filter by Plate Appearances (PA)
+                    subset = subset[subset['IP_Prev'] >= 5] 
+                else: continue 
             else:
                 if 'PA_Prev' in subset.columns:
-                    subset = subset[subset['PA_Prev'] >= 10] # Minimum 10 PAs
-                else:
-                    continue
+                    subset = subset[subset['PA_Prev'] >= 10]
+                else: continue
 
-            # 3. Valid Denominator Check
-            # We cannot divide by zero.
+            # Valid Denominator
             subset = subset[subset[f'{col}_Prev'] > 0]
 
-            # 4. Minimum Population Check
-            # If we have fewer than 3 players in this cohort after filtering, the data is too scarce to trust.
+            # Minimum Population
             if len(subset) < 3:
                 transition_stats[col] = 1.0 
                 continue
 
-            # --- CALCULATION LOGIC ---
-            # 1. Calculate the Ratio for every individual player.
-            #    Formula: Next_Year_Stat / Prev_Year_Stat
+            # --- CALCULATION (Median) ---
             ratios = subset[f'{col}_Next'] / subset[f'{col}_Prev']
-            
-            # 2. Aggregation: MEDIAN vs MEAN
-            #    We use the MEDIAN (the middle value).
-            #    Why? Averages are sensitive to outliers. 
-            #    Example: A bench player going from 1 HR to 10 HR is a 10x multiplier.
-            #    If we averaged that with normal players (1.1x), the result would be skewed high.
-            #    The Median gives us the "typical" progression.
-            median_growth = ratios.median()
-            
-            transition_stats[col] = round(median_growth, 3)
+            transition_stats[col] = round(ratios.median(), 3)
             
         multipliers.append(transition_stats)
 
@@ -174,7 +175,7 @@ def generate_stat_multipliers():
         print("\nCalculated Development Multipliers (Median):")
         print(df_multipliers[preview_cols].to_string() if preview_cols else df_multipliers.head())
         
-        # --- Save to specified directory ---
+        # --- Save ---
         output_dir = os.path.join('data', 'development_multipliers')
         os.makedirs(output_dir, exist_ok=True)
         
