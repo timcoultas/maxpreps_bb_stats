@@ -3,39 +3,33 @@ import numpy as np
 import os
 import sys
 
-# --- Import Config ---
-# We try importing from src.config first (standard structure), 
-# then fallback to local config (flat structure).
+# --- Import Config & Utils ---
 try:
     from src.config import STAT_SCHEMA
+    from src.utils import prepare_analysis_data
 except ImportError:
     try:
         from config import STAT_SCHEMA
+        from utils import prepare_analysis_data
     except ImportError:
-        print("Error: Could not import STAT_SCHEMA from config.py. Please ensure the file exists.")
+        print("Error: Could not import config or utils. Please ensure src/config.py and src/utils.py exist.")
         sys.exit(1)
 
 def generate_stat_multipliers():
     """
     1. Loads aggregated history.
-    2. Identifies players who played in consecutive years (Match by NAME + TEAM).
-    3. Calculates multipliers for:
-       a) Standard Class Progressions (Freshman -> Sophomore, etc.)
-       b) Varsity Tenure Progressions (Year 1 -> Year 2, etc.)
-    4. Outputs a combined multipliers CSV.
+    2. Identifies players who played in consecutive years.
+    3. Calculates multipliers for Class, Tenure, and Combined transitions.
     """
     
     # --- Load Data ---
     input_file = os.path.join('data', 'processed', 'history', 'aggregated_stats.csv')
     if not os.path.exists(input_file):
-        input_file = 'aggregated_stats.csv'
+        print(f"Error: {input_file} not found.")
+        return
         
     print(f"Loading data from {input_file}...")
-    try:
-        df = pd.read_csv(input_file)
-    except FileNotFoundError:
-        print("Error: Could not find aggregated_stats.csv. Please run the ETL pipeline first.")
-        return
+    df = pd.read_csv(input_file)
 
     # --- 1. Dynamic Column Handling using Config ---
     available_stats = set(df.columns)
@@ -48,34 +42,15 @@ def generate_stat_multipliers():
             stat_cols.append(abbr)
             stat_types[abbr] = stat_def['stat_type']
 
-    print(f"Processing {len(stat_cols)} stats defined in config...")
-
     # Convert numeric columns
     for col in stat_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
-
-    # Ensure Year is int
-    if 'Season_Cleaned' in df.columns:
-        df['Season_Year'] = pd.to_numeric(df['Season_Cleaned'], errors='coerce')
-        df = df.dropna(subset=['Season_Year']) 
-        df['Season_Year'] = df['Season_Year'].astype(int)
-    else:
-        print("Error: 'Season_Cleaned' column missing.")
-        return
     
-    # --- PREPARATION ---
-    # Normalize Names/Teams for matching
-    df['Match_Name'] = df['Name'].astype(str).str.strip().str.lower()
-    df['Match_Team'] = df['Team'].astype(str).str.strip().str.lower()
+    # --- 2. Centralized Data Prep (Utils) ---
+    # Calculates Season_Year, Match Keys, and Varsity_Year
+    df = prepare_analysis_data(df)
     
-    # --- CALCULATE VARSITY TENURE (Year 1, Year 2, etc.) ---
-    # We sort by Player and Year, then count the cumulative occurrence.
-    # Rank 1 = First year appearing in dataset (Year 1)
-    # Rank 2 = Second year appearing in dataset (Year 2)
-    df = df.sort_values(['Match_Team', 'Match_Name', 'Season_Year'])
-    df['Varsity_Year'] = df.groupby(['Match_Team', 'Match_Name']).cumcount() + 1
-    
-    # --- JOIN LOGIC (Self-Join Year N vs Year N+1) ---
+    # --- 3. Join Logic (Self-Join Year N vs Year N+1) ---
     df_prev = df.copy()
     df_prev['Join_Year'] = df_prev['Season_Year'] + 1 
     
@@ -93,55 +68,76 @@ def generate_stat_multipliers():
         print("Warning: Zero matches found.")
         return
 
-    # --- DEFINE TRANSITIONS ---
-    # We now have two types of transitions we want to calculate.
+    # --- 4. Define Transitions ---
     
-    # 1. Class Transitions (Freshman -> Sophomore)
+    # Class Transitions
     class_transitions = [
         ('Class', 'Freshman', 'Sophomore'),
         ('Class', 'Sophomore', 'Junior'),
         ('Class', 'Junior', 'Senior')
     ]
     
-    # 2. Tenure Transitions (Year 1 -> Year 2)
+    # Tenure Transitions
     tenure_transitions = [
         ('Tenure', 1, 2),
         ('Tenure', 2, 3),
         ('Tenure', 3, 4)
     ]
+
+    # Combined Class + Tenure Transitions
+    combined_transitions = [
+        ('Class_Tenure', ('Freshman', 1), ('Sophomore', 2)), 
+        ('Class_Tenure', ('Sophomore', 1), ('Junior', 2)),   
+        ('Class_Tenure', ('Sophomore', 2), ('Junior', 3)),   
+        ('Class_Tenure', ('Junior', 1), ('Senior', 2)),      
+        ('Class_Tenure', ('Junior', 2), ('Senior', 3)),      
+        ('Class_Tenure', ('Junior', 3), ('Senior', 4)),      
+    ]
     
-    all_transitions = class_transitions + tenure_transitions
+    all_transitions = class_transitions + tenure_transitions + combined_transitions
     
     multipliers = []
+    
+    print("\n--- Processing Cohorts ---")
 
-    for category, start_val, end_val in all_transitions:
+    for definition in all_transitions:
+        category = definition[0]
+        start_val = definition[1]
+        end_val = definition[2]
         
-        # Filter the cohort based on the category (Class vs Tenure)
+        # Filter Logic based on Category
         if category == 'Class':
             cohort = merged[
                 (merged['Class_Cleaned_Prev'] == start_val) & 
                 (merged['Class_Cleaned_Next'] == end_val)
             ]
             trans_name = f"{start_val}_to_{end_val}"
-        else: # Tenure
+            
+        elif category == 'Tenure':
             cohort = merged[
                 (merged['Varsity_Year_Prev'] == start_val) & 
                 (merged['Varsity_Year_Next'] == end_val)
             ]
             trans_name = f"Varsity_Year{start_val}_to_Year{end_val}"
+            
+        elif category == 'Class_Tenure':
+            s_cls, s_ten = start_val
+            e_cls, e_ten = end_val
+            cohort = merged[
+                (merged['Class_Cleaned_Prev'] == s_cls) & 
+                (merged['Varsity_Year_Prev'] == s_ten) &
+                (merged['Class_Cleaned_Next'] == e_cls) & 
+                (merged['Varsity_Year_Next'] == e_ten)
+            ]
+            trans_name = f"{s_cls}_Y{s_ten}_to_{e_cls}_Y{e_ten}"
 
-        # --- DEBUG VIEW (Specific Requests) ---
-        if (category == 'Class' and start_val == 'Junior' and end_val == 'Senior'):
-             print(f"\n--- DEBUG: {trans_name} (n={len(cohort)}) ---")
-             # (Existing debug logic omitted for brevity unless needed, but keeping simple print)
-
-        transition_stats = {'Transition': trans_name, 'Type': category}
+        transition_stats = {'Transition': trans_name, 'Type': category, 'Sample_Size': len(cohort)}
         
         for col in stat_cols:
             subset = cohort.copy()
             st_type = stat_types.get(col, 'Batting')
             
-            # --- FILTERING LOGIC ---
+            # Filtering Logic
             if st_type == 'Pitching':
                 if 'IP_Prev' in subset.columns:
                     subset = subset[subset['IP_Prev'] >= 5] 
@@ -151,15 +147,12 @@ def generate_stat_multipliers():
                     subset = subset[subset['PA_Prev'] >= 10]
                 else: continue
 
-            # Valid Denominator
             subset = subset[subset[f'{col}_Prev'] > 0]
 
-            # Minimum Population
             if len(subset) < 3:
                 transition_stats[col] = 1.0 
                 continue
 
-            # --- CALCULATION (Median) ---
             ratios = subset[f'{col}_Next'] / subset[f'{col}_Prev']
             transition_stats[col] = round(ratios.median(), 3)
             
@@ -170,18 +163,13 @@ def generate_stat_multipliers():
     if not df_multipliers.empty:
         df_multipliers.set_index('Transition', inplace=True)
         
-        # Display preview
-        preview_cols = [c for c in ['PA', 'H', 'HR', 'ERA', 'IP'] if c in df_multipliers.columns]
-        print("\nCalculated Development Multipliers (Median):")
-        print(df_multipliers[preview_cols].to_string() if preview_cols else df_multipliers.head())
-        
-        # --- Save ---
+        # Save
         output_dir = os.path.join('data', 'development_multipliers')
         os.makedirs(output_dir, exist_ok=True)
         
         output_file = os.path.join(output_dir, 'development_multipliers.csv')
         df_multipliers.to_csv(output_file)
-        print(f"Saved multipliers to '{output_file}'")
+        print(f"\nSaved multipliers to '{output_file}'")
     else:
         print("Warning: No valid transition data found.")
 
