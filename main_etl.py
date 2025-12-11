@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup               # HTML Parser: Reads the raw web pag
 from src.metadata import extract_metadata   # Custom Tool: Extracts header info (Team/Year)
 from src.stat_extraction import extract_player_data # Custom Tool: Extracts roster & stats
 from src.config import STAT_SCHEMA          # Configuration: The list of stats to target
-
+from src.class_inference import infer_missing_classes # <--- function to clean up player class data where missing
 
 # ==============================================================================
 #MaxPreps Baseball ETL Pipeline
@@ -78,9 +78,16 @@ def save_dataframe(data_list, output_folder, file_name):
     # Convert list of dicts to DataFrame
     df = pd.DataFrame(data_list)
     
+    # Before saving, try to fill in missing class years
+    # This assumes 'Season_Cleaned' and 'Name' exist
+    print("   -> Running Class Inference...")
+    df = infer_missing_classes(df)
+
+
     # --- Column Organization ---
     # Define fixed columns that should always appear on the left
-    fixed_cols = ['Season', 'Season_Cleaned',  'Team', 'Level', 'Source_File', 'Name', 'Class', 'Athlete_ID']
+    # UPDATED: Added 'Class_Cleaned' to this list
+    fixed_cols = ['Season', 'Season_Cleaned',  'Team', 'Level', 'Source_File', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
     
     # Get stat columns from Config to ensure consistency
     schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]
