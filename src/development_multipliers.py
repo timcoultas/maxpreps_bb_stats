@@ -18,7 +18,7 @@ except ImportError:
 def generate_stat_multipliers():
     """
     1. Loads aggregated history.
-    2. Identifies players who played in consecutive years.
+    2. Identifies players who played in consecutive years (Match by NAME + TEAM).
     3. Calculates year-over-year performance multipliers.
     4. Uses config.py to determine stat types and apply appropriate filters.
     """
@@ -55,30 +55,39 @@ def generate_stat_multipliers():
 
     # Ensure Year is int for math
     if 'Season_Cleaned' in df.columns:
-        df['Season_Year'] = df['Season_Cleaned'].astype(int)
+        df['Season_Year'] = pd.to_numeric(df['Season_Cleaned'], errors='coerce')
+        df = df.dropna(subset=['Season_Year']) # Drop rows where year couldn't be parsed
+        df['Season_Year'] = df['Season_Year'].astype(int)
     else:
         print("Error: 'Season_Cleaned' column missing from input CSV.")
         return
-
+    
     # --- Step 2: Create the "Development Curve" (Year N vs Year N+1) ---
     
+    # PREPARATION: Normalize Names/Teams for matching
+    # Athlete_IDs are unstable across years, so we use Name + Team as the unique identifier.
+    df['Match_Name'] = df['Name'].astype(str).str.strip().str.lower()
+    df['Match_Team'] = df['Team'].astype(str).str.strip().str.lower()
+    
     # LOGIC:
-    # We need to compare Player X in 2023 vs Player X in 2024.
-    # We perform a "Self-Join" where the Left side is the Previous Year 
-    # and the Right side is the Current Year.
-    
+    # We need to compare Player X in Year N (Prev) vs Player X in Year N+1 (Next).
     df_prev = df.copy()
-    df_prev['Join_Year'] = df_prev['Season_Year'] + 1  # This calculates the year we want to match AGAINST
+    df_prev['Join_Year'] = df_prev['Season_Year'] + 1  # The year we are predicting FOR
     
+    # Merge on Name, Team, and the Calculated Join Year
     merged = pd.merge(
         df_prev, 
         df, 
-        left_on=['Athlete_ID', 'Join_Year'], 
-        right_on=['Athlete_ID', 'Season_Year'],
+        left_on=['Match_Name', 'Match_Team', 'Join_Year'], 
+        right_on=['Match_Name', 'Match_Team', 'Season_Year'],
         suffixes=('_Prev', '_Next')
     )
     
-    print(f"Found {len(merged)} player-seasons with year-over-year data.")
+    print(f"Found {len(merged)} player-seasons with year-over-year data (Matched by Name/Team).")
+    
+    if len(merged) == 0:
+        print("Warning: Zero matches found. Please check if 'Name' and 'Team' formats are consistent across years.")
+        return
 
     valid_transitions = {
         'Freshman': 'Sophomore',
@@ -86,9 +95,7 @@ def generate_stat_multipliers():
         'Junior': 'Senior'
     }
 
-    if 'Class_Cleaned_Prev' in merged.columns:
-        merged = merged[merged['Class_Cleaned_Prev'].isin(valid_transitions.keys())]
-    else:
+    if 'Class_Cleaned_Prev' not in merged.columns or 'Class_Cleaned_Next' not in merged.columns:
         print("Error: 'Class_Cleaned' column missing.")
         return
     
@@ -97,8 +104,15 @@ def generate_stat_multipliers():
     multipliers = []
 
     for start_class, end_class in valid_transitions.items():
-        # Get the "Cohort": All players making this specific transition (e.g., Freshman to Sophomore)
-        cohort = merged[merged['Class_Cleaned_Prev'] == start_class]
+        # Get the "Cohort": 
+        # 1. Started as Start_Class (e.g., Freshman)
+        # 2. Ended as End_Class (e.g., Sophomore)
+        # We explicitly check the Next Class to avoid data errors (e.g. someone listed as Junior -> Junior)
+        cohort = merged[
+            (merged['Class_Cleaned_Prev'] == start_class) & 
+            (merged['Class_Cleaned_Next'] == end_class)
+        ]
+        
         transition_stats = {'Transition': f"{start_class}_to_{end_class}"}
         
         for col in stat_cols:
@@ -107,9 +121,7 @@ def generate_stat_multipliers():
             
             # --- FILTERING LOGIC ---
             # We filter out players with small sample sizes in the previous year.
-            # Rationale: A player with 1 At-Bat who gets 1 Hit has a 1.000 average.
-            # If they play full time next year and hit .300, the multiplier would be 0.3x.
-            # Small samples create noisy, unreliable multipliers.
+            # Rationale: Small samples (e.g., 1 AB) create noisy, unreliable multipliers (e.g. 1 Hit / 1 AB = 1.000 Avg).
             
             # 1. Pitching Stats: Filter by Innings Pitched (IP)
             if st_type == 'Pitching':
@@ -126,12 +138,11 @@ def generate_stat_multipliers():
                     continue
 
             # 3. Valid Denominator Check
-            # We cannot divide by zero. If a player had 0 stats last year, we can't calculate a growth multiplier.
+            # We cannot divide by zero.
             subset = subset[subset[f'{col}_Prev'] > 0]
 
             # 4. Minimum Population Check
-            # If we have fewer than 3 players in this cohort after filtering, 
-            # the data is too scarce to trust. Default to 1.0 (no change).
+            # If we have fewer than 3 players in this cohort after filtering, the data is too scarce to trust.
             if len(subset) < 3:
                 transition_stats[col] = 1.0 
                 continue
@@ -144,12 +155,9 @@ def generate_stat_multipliers():
             # 2. Aggregation: MEDIAN vs MEAN
             #    We use the MEDIAN (the middle value).
             #    Why? Averages are sensitive to outliers. 
-            #    Example: 
-            #       Player A: 1 HR -> 2 HR (2.0x)
-            #       Player B: 2 HR -> 4 HR (2.0x)
-            #       Player C: 1 HR -> 15 HR (15.0x) -- The "Breakout" star
-            #    Average = (2+2+15)/3 = 6.3x multiplier. (Too high for a normal projection)
-            #    Median = 2.0x multiplier. (A safer, more realistic expectation)
+            #    Example: A bench player going from 1 HR to 10 HR is a 10x multiplier.
+            #    If we averaged that with normal players (1.1x), the result would be skewed high.
+            #    The Median gives us the "typical" progression.
             median_growth = ratios.median()
             
             transition_stats[col] = round(median_growth, 3)
