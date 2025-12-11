@@ -20,7 +20,8 @@ def predict_2026_roster():
     """
     1. Loads historical data & generic profiles.
     2. Forecasts 2026 stats for returning players.
-    3. Backfills rosters with Generic Sophomores if teams are short ( <9 Batters, <6 Pitchers).
+    3. Backfills rosters with Tiered Generic Sophomores if teams are short ( <9 Batters, <6 Pitchers).
+       - Uses "Best Available" generic strategy (50th %ile -> 10th %ile).
     4. Assigns Roles and Ranks (Global & Team).
     """
     
@@ -58,7 +59,6 @@ def predict_2026_roster():
     df_history = prepare_analysis_data(df_history)
     
     # --- 3. Isolate 2025 Roster ---
-    # We only want players who played in 2025 (or the latest available year)
     df_2025 = df_history[df_history['Season_Year'] == 2025].copy()
     
     if df_2025.empty:
@@ -85,7 +85,7 @@ def predict_2026_roster():
         
         if next_class == 'Unknown': continue 
 
-        # Hierarchical Lookup: Class+Tenure -> Class Only -> Default
+        # Hierarchical Lookup
         target = f"{curr_class}_Y{curr_tenure}_to_{next_class}_Y{next_tenure}"
         fallback = f"{curr_class}_to_{next_class}"
         
@@ -114,7 +114,7 @@ def predict_2026_roster():
                     multiplier = applied_factors[col]
                     proj[col] = round(player[col] * multiplier, 2)
                     
-                    # Sanity Caps to prevent simulation explosions
+                    # Sanity Caps
                     if col == 'IP' and proj[col] > 70: proj[col] = 70.0
                     if col == 'APP' and proj[col] > 25: proj[col] = 25
         
@@ -127,72 +127,85 @@ def predict_2026_roster():
         return
 
     # --- 5. Assign Roles (Initial) ---
-    # Used to determine if backfilling is needed
-    # Pitcher if IP >= 6, Batter if AB >= 15
     df_proj['Is_Pitcher'] = df_proj['IP'].fillna(0) >= 6
     df_proj['Is_Batter'] = df_proj['AB'].fillna(0) >= 15
 
-    # --- 6. Backfill Rosters with Generics ---
+    # --- 6. Backfill Rosters with Tiered Generics ---
     if not df_generic.empty:
         print("\nChecking roster minimums (9 Batters, 6 Pitchers)...")
         
-        # Extract templates
-        gen_batter_row = df_generic[df_generic['Role'] == 'Batter']
-        gen_pitcher_row = df_generic[df_generic['Role'] == 'Pitcher']
-        
+        # Prepare Tiered Generics
+        # Sort by Percentile DESCENDING (50th %ile first, then 40th...)
+        # We want to give teams the "best available" replacement first.
+        if 'Percentile_Tier' in df_generic.columns:
+            gen_batters = df_generic[df_generic['Role'] == 'Batter'].sort_values('Percentile_Tier', ascending=False)
+            gen_pitchers = df_generic[df_generic['Role'] == 'Pitcher'].sort_values('Percentile_Tier', ascending=False)
+        else:
+            # Fallback for old generic file format
+            gen_batters = df_generic[df_generic['Role'] == 'Batter']
+            gen_pitchers = df_generic[df_generic['Role'] == 'Pitcher']
+
         filled_players = []
-        
-        # Get unique teams from the PROJECTED roster
         teams = df_proj['Team'].unique()
         
         for team in teams:
             team_roster = df_proj[df_proj['Team'] == team]
-            
-            # Count Roles
             n_batters = team_roster['Is_Batter'].sum()
             n_pitchers = team_roster['Is_Pitcher'].sum()
             
             # Add Batters
-            if n_batters < 9 and not gen_batter_row.empty:
+            if n_batters < 9 and not gen_batters.empty:
                 needed = 9 - n_batters
-                template = gen_batter_row.iloc[0].to_dict()
                 for i in range(needed):
+                    # Cycle through tiers: i=0 -> 50th, i=1 -> 40th, etc.
+                    template_idx = i % len(gen_batters)
+                    template = gen_batters.iloc[template_idx].to_dict()
+                    
                     new_player = template.copy()
                     new_player['Team'] = team
-                    new_player['Name'] = f"Generic Batter {i+1}"
+                    # Distinct Name
+                    pct_label = int(template.get('Percentile_Tier', 0) * 100)
+                    new_player['Name'] = f"Generic Batter {i+1} ({pct_label}th)"
+                    
                     new_player['Season_Cleaned'] = 2026
                     new_player['Is_Batter'] = True
                     new_player['Is_Pitcher'] = False
                     new_player['Projection_Method'] = 'Roster Backfill'
-                    # Remove 'Role' from template if it exists
-                    new_player.pop('Role', None)
+                    
+                    # Clean metadata keys
+                    for k in ['Role', 'Percentile_Tier']:
+                        new_player.pop(k, None)
+                        
                     filled_players.append(new_player)
 
             # Add Pitchers
-            if n_pitchers < 6 and not gen_pitcher_row.empty:
+            if n_pitchers < 6 and not gen_pitchers.empty:
                 needed = 6 - n_pitchers
-                template = gen_pitcher_row.iloc[0].to_dict()
                 for i in range(needed):
+                    template_idx = i % len(gen_pitchers)
+                    template = gen_pitchers.iloc[template_idx].to_dict()
+                    
                     new_player = template.copy()
                     new_player['Team'] = team
-                    new_player['Name'] = f"Generic Pitcher {i+1}"
+                    pct_label = int(template.get('Percentile_Tier', 0) * 100)
+                    new_player['Name'] = f"Generic Pitcher {i+1} ({pct_label}th)"
+                    
                     new_player['Season_Cleaned'] = 2026
                     new_player['Is_Batter'] = False
                     new_player['Is_Pitcher'] = True
                     new_player['Projection_Method'] = 'Roster Backfill'
-                    new_player.pop('Role', None)
+                    
+                    for k in ['Role', 'Percentile_Tier']:
+                        new_player.pop(k, None)
+                        
                     filled_players.append(new_player)
                     
         if filled_players:
             print(f"Backfilling {len(filled_players)} generic player slots.")
             df_filled = pd.DataFrame(filled_players)
-            # Combine
             df_proj = pd.concat([df_proj, df_filled], ignore_index=True)
 
     # --- 7. Calculate Ranks (Final) ---
-    # We recalculate ranks now to include the backfilled players
-    
-    # Helper columns
     df_proj['PA_Filled'] = df_proj['PA'].fillna(0)
     df_proj['IP_Filled'] = df_proj['IP'].fillna(0)
 
@@ -204,15 +217,14 @@ def predict_2026_roster():
     df_proj['Offensive_Rank_Team'] = df_proj.groupby('Team')['PA_Filled'].rank(method='min', ascending=False).astype(int)
     df_proj['Pitching_Rank_Team'] = df_proj.groupby('Team')['IP_Filled'].rank(method='min', ascending=False).astype(int)
     
-    # --- 8. Apply Penalties ---
-    # Force non-qualifiers to 9999 so they drop to the bottom of sorted lists
+    # Penalties
     df_proj.loc[~df_proj['Is_Batter'], ['Offensive_Rank', 'Offensive_Rank_Team']] = 9999
     df_proj.loc[~df_proj['Is_Pitcher'], ['Pitching_Rank', 'Pitching_Rank_Team']] = 9999
 
-    # Clean up helpers
+    # Clean up
     df_proj.drop(columns=['PA_Filled', 'IP_Filled', 'Role'], inplace=True, errors='ignore')
 
-    # --- 9. Save ---
+    # --- 8. Save ---
     cols_order = [
         'Offensive_Rank', 'Offensive_Rank_Team', 
         'Pitching_Rank', 'Pitching_Rank_Team',
