@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+from advanced_ranking import apply_advanced_rankings
 
 # --- Import Config & Utils ---
 # Handles imports whether running from root or src/
@@ -248,33 +249,15 @@ def predict_2026_roster():
             df_proj = pd.concat([df_proj, df_filled], ignore_index=True)
 
     # --- 7. Calculate Ranks (Final) ---
-    df_proj['PA_Filled'] = df_proj['PA'].fillna(0)
-    df_proj['IP_Filled'] = df_proj['IP'].fillna(0)
-
-    # Global Ranks
-    # SQL: RANK() OVER (ORDER BY PA DESC)
-    df_proj['Offensive_Rank'] = df_proj['PA_Filled'].rank(method='min', ascending=False).astype(int)
-    df_proj['Pitching_Rank'] = df_proj['IP_Filled'].rank(method='min', ascending=False).astype(int)
-
-    # Team Ranks
-    # SQL: RANK() OVER (PARTITION BY Team ORDER BY PA DESC)
-    df_proj['Offensive_Rank_Team'] = df_proj.groupby('Team')['PA_Filled'].rank(method='min', ascending=False).astype(int)
-    df_proj['Pitching_Rank_Team'] = df_proj.groupby('Team')['IP_Filled'].rank(method='min', ascending=False).astype(int)
-    
-    # Penalties (Set non-qualifiers to last rank)
-    df_proj.loc[~df_proj['Is_Batter'], ['Offensive_Rank', 'Offensive_Rank_Team']] = 9999
-    df_proj.loc[~df_proj['Is_Pitcher'], ['Pitching_Rank', 'Pitching_Rank_Team']] = 9999
-
-    # Clean up
-    df_proj.drop(columns=['PA_Filled', 'IP_Filled', 'Role'], inplace=True, errors='ignore')
+    df_proj = apply_advanced_rankings(df_proj)
 
     # --- 8. Save ---
     
-    # Construct Column Order: Meta -> Stats -> Flags/Ranks (at far right)
+   # Construct Column Order: Meta -> Stats -> Flags/Ranks (at far right)
     meta_cols_start = ['Team', 'Name',  'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 'Projection_Method',  'Offensive_Rank_Team', 'Pitching_Rank_Team']
     meta_cols_end = [
         'Is_Batter', 'Is_Pitcher', 'Offensive_Rank',
-        'Pitching_Rank'
+        'Pitching_Rank', 'RC_Score', 'Pitching_Score'
     ]
     
     final_cols = [c for c in meta_cols_start if c in df_proj.columns] + \
