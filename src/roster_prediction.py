@@ -225,15 +225,22 @@ def predict_2026_roster():
     df_proj.drop(columns=['PA_Filled', 'IP_Filled', 'Role'], inplace=True, errors='ignore')
 
     # --- 8. Save ---
-    cols_order = [
-        'Offensive_Rank', 'Offensive_Rank_Team', 
-        'Pitching_Rank', 'Pitching_Rank_Team',
-        'Is_Batter', 'Is_Pitcher',
-        'Name', 'Team', 'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 'Projection_Method'
-    ] + stat_cols
     
-    final_cols = [c for c in cols_order if c in df_proj.columns]
-    df_proj = df_proj[final_cols].sort_values('Offensive_Rank')
+    # Construct Column Order: Meta -> Stats -> Flags/Ranks (at far right)
+    meta_cols_start = ['Team', 'Name',  'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 'Projection_Method',  'Offensive_Rank_Team', 'Pitching_Rank_Team']
+    meta_cols_end = [
+        'Is_Batter', 'Is_Pitcher', 'Offensive_Rank',
+        'Pitching_Rank'
+    ]
+    
+    final_cols = [c for c in meta_cols_start if c in df_proj.columns] + \
+                 [c for c in stat_cols if c in df_proj.columns] + \
+                 [c for c in meta_cols_end if c in df_proj.columns]
+                 
+    df_proj = df_proj[final_cols]
+    
+    # Sort: Team -> Offensive Rank (Team) -> Pitching Rank (Team)
+    df_proj = df_proj.sort_values(['Team', 'Offensive_Rank_Team', 'Pitching_Rank_Team'])
     
     output_dir = os.path.join('data', 'output', 'roster_prediction')
     os.makedirs(output_dir, exist_ok=True)
@@ -246,8 +253,9 @@ def predict_2026_roster():
     
     # Preview
     if not df_proj.empty:
-        print("\n--- Top 5 Projected Hitters (by PA) ---")
-        print(df_proj[['Offensive_Rank', 'Offensive_Rank_Team', 'Name', 'Team', 'PA']].head().to_string(index=False))
+        print("\n--- Top 5 Projected Hitters (by Team Rank) ---")
+        preview_cols = ['Team', 'Offensive_Rank_Team', 'Name', 'PA']
+        print(df_proj[preview_cols].head().to_string(index=False))
 
 if __name__ == "__main__":
     predict_2026_roster()
