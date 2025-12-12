@@ -15,8 +15,35 @@ except ImportError:
 
 def create_generic_profiles():
     """
-    Calculates 5 tiers of generic profiles (10th-50th percentile) for Batters and Pitchers.
-    Saves to data/reference/generic_players.csv.
+    Generates synthetic "Replacement Level" player profiles based on historical data.
+
+    Context:
+        Baseball Context:
+            This is the "Farm System" simulator. Every season, Seniors graduate and leave 
+            holes in the roster. We need to fill those spots with call-ups from JV. 
+            Since we don't know the specific names of every incoming Sophomore yet, 
+            we create "Generic Players" to stand in for them. This allows us to answer: 
+            "Even if we only get average talent coming up from JV, how strong will our team be?"
+
+        Statistical Validity:
+            Constructs a **Reference Distribution** for new entrants (Sophomores). 
+            Instead of assuming every new player is "Average" (Mean), we model the 
+            variance of talent by calculating **Quantiles** (10th, 20th... 50th percentiles). 
+            This allows for sensitivity analysis—we can model a "Rebuilding Year" (using 
+            20th percentile replacement players) vs a "Strong Class" (50th percentile).
+
+        Technical Implementation:
+            This acts as a Stratified Aggregation job.
+            1. Filter: Select only `Sophomores` from history (The target population).
+            2. Window Function: Calculate `PERCENT_RANK()` over the primary sorting metric 
+               (PA for Batters, IP for Pitchers).
+            3. Binning: Group records into decile buckets (0-10%, 10-20%, etc.).
+            4. Aggregate: Calculate the Median stat line for each bucket to create 
+               the representative "Generic" record.
+
+    Output:
+        Saves 'data/reference/generic_players.csv' containing tiered stat lines 
+        for both Batters and Pitchers.
     """
     
     # 1. Load History
@@ -28,12 +55,13 @@ def create_generic_profiles():
     print("Loading historical data to calculate tiered generic baselines...")
     df = pd.read_csv(input_file)
     
-    # Clean numeric columns
+    # Clean numeric columns (Schema Enforcement)
     stat_cols = [s['abbreviation'] for s in STAT_SCHEMA if s['abbreviation'] in df.columns]
     for col in stat_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
     # 2. Filter for Sophomores
+    # WHERE Class = 'Sophomore'
     sophs = df[df['Class_Cleaned'] == 'Sophomore'].copy()
     if sophs.empty:
         print("Error: No sophomores found in history.")
@@ -42,12 +70,17 @@ def create_generic_profiles():
     profiles = []
     
     # Tiers to generate (Percentiles)
+    # We focus on the bottom half (10th-50th) because "Backfill" players are typically 
+    # not the superstars; they are the depth pieces.
     target_quantiles = [0.1, 0.2, 0.3, 0.4, 0.5]
 
     # --- HELPER: Generate Tiered Stats ---
     def generate_tiers(df_subset, role, metric_col):
+        """
+        Calculates the median stats for specific percentile tiers.
+        """
         # Calculate Percentile Ranks for the sorting metric (PA or IP)
-        # method='min' ensures that tied values don't jump brackets unexpectedly
+        # SQL Equivalent: PERCENT_RANK() OVER (ORDER BY metric_col)
         df_subset = df_subset.copy()
         df_subset['pct_rank'] = df_subset[metric_col].rank(pct=True, method='min')
         
@@ -60,11 +93,13 @@ def create_generic_profiles():
             upper_bound = q
             
             # Filter for players in this percentile bucket
+            # WHERE pct_rank > lower AND pct_rank <= upper
             bucket = df_subset[
                 (df_subset['pct_rank'] > lower_bound) & 
                 (df_subset['pct_rank'] <= upper_bound)
             ]
             
+            # Handling sparse data buckets
             if bucket.empty:
                 # Fallback: expand search slightly if bucket is empty due to small sample
                 bucket = df_subset[
@@ -82,13 +117,13 @@ def create_generic_profiles():
                     'Percentile_Tier': q
                 }
                 
-                # Calculate Median stats for this bucket
+                # Calculate Median stats for this bucket (The "Representative" stat line)
                 for col in stat_cols:
                     profile[col] = round(bucket[col].median(), 2)
                 
                 # Enforce minimums for the defining stat to ensure they qualify for the role
+                # A "Generic Batter" must have at least some At-Bats, even if the median was 0
                 if role == 'Batter' and profile.get('AB', 0) < 10:
-                     # Even the 10th percentile batter needs to look like a batter
                      profile['AB'] = max(profile.get('AB', 0), 10.0)
                 
                 if role == 'Pitcher' and profile.get('IP', 0) < 5:
