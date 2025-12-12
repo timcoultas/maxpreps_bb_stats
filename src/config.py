@@ -1,10 +1,33 @@
 # src/config.py
+"""
+Configuration: Statistical Schema Definition
 
-# This is the central definition of all stats we want to capture.
-# If you want to add a new stat, just add it to this list.
+Context:
+    Baseball Context:
+        This is the official Scorekeeping Rulebook. Just as the umpire needs to know 
+        the difference between a hit and an error, our system needs to know exactly 
+        which numbers to pull from the box score. This file defines the specific 
+        columns we care about—ignoring the noise—so we can build a consistent 
+        scouting report for every player.
 
+    Statistical Validity:
+        Defines the Operational Definitions for all dependent variables. By explicitly 
+        mapping variable names (e.g., 'H') to specific source classes (e.g., 'hits stat dw'), 
+        we ensure construct validity. This prevents ambiguity where "Runs" could be interpreted 
+        as "Runs Scored" vs "Runs Allowed" unless strictly defined here.
+
+    Technical Implementation:
+        Think of this as the Schema Registry or DDL (Data Definition Language) for our 
+        NoSQL extraction. We are mapping JSON keys (or HTML classes) to our internal 
+        Relational Column names. This dictionary drives the entire downstream ETL process, 
+        acting as the config file that controls the `SELECT` statement in `stat_extraction.py`.
+"""
+
+# This list functions as the Master Data Dictionary. 
+# It dictates the schema for the resulting Pandas DataFrames (tables).
 STAT_SCHEMA = [
     # --- BATTING ---
+    # Mapping source HTML class (Source System Field) to internal abbreviation (Target Column)
     {"abbreviation": "PA",   "max_preps_class": "plateappearances stat dw",        "stat_type": "Batting"},
     {"abbreviation": "AB",   "max_preps_class": "atbats stat dw",                  "stat_type": "Batting"},
     {"abbreviation": "AVG",  "max_preps_class": "battingaverage stat dw",          "stat_type": "Batting"},
