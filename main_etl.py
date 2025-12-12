@@ -3,10 +3,10 @@ import glob         # File Pattern Matching: Finds files like *.html
 import argparse     # Argument Parser: Handles command line inputs (--teams, --period)
 import pandas as pd # Data Manipulation: Manages the data tables/CSVs
 from bs4 import BeautifulSoup               # HTML Parser: Reads the raw web pages
-from src.metadata import extract_metadata   # Custom Tool: Extracts header info (Team/Year)
-from src.stat_extraction import extract_player_data # Custom Tool: Extracts roster & stats
-from src.config import STAT_SCHEMA          # Configuration: The list of stats to target
-from src.class_inference import infer_missing_classes # <--- function to clean up player class data where missing
+from src.etl.metadata import extract_metadata   # Custom Tool: Extracts header info (Team/Year)
+from src.etl.stat_extraction import extract_player_data # Custom Tool: Extracts roster & stats
+from src.utils.config import STAT_SCHEMA          # Configuration: The list of stats to target
+from src.etl.class_inference import infer_missing_classes # <--- function to clean up player class data where missing
 
 # ==============================================================================
 # MaxPreps Baseball ETL Pipeline

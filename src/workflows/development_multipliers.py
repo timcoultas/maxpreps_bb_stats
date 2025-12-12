@@ -5,12 +5,12 @@ import sys
 
 # --- Import Config & Utils ---
 try:
-    from src.config import STAT_SCHEMA
-    from src.utils import prepare_analysis_data
+    from utils.config import STAT_SCHEMA
+    from utils.utils import prepare_analysis_data
 except ImportError:
     try:
-        from config import STAT_SCHEMA
-        from utils import prepare_analysis_data
+        from utils.config import STAT_SCHEMA
+        from utils.utils import prepare_analysis_data
     except ImportError:
         print("Error: Could not import config or utils. Please ensure src/config.py and src/utils.py exist.")
         sys.exit(1)

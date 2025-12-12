@@ -2,17 +2,17 @@ import pandas as pd
 import numpy as np
 import os
 import sys
-from advanced_ranking import apply_advanced_rankings
+from models.advanced_ranking import apply_advanced_rankings
 
 # --- Import Config & Utils ---
 # Handles imports whether running from root or src/
 try:
-    from src.config import STAT_SCHEMA
-    from src.utils import prepare_analysis_data
+    from utils.config import STAT_SCHEMA
+    from utils.utils import prepare_analysis_data
 except ImportError:
     try:
-        from config import STAT_SCHEMA
-        from utils import prepare_analysis_data
+        from utils.config import STAT_SCHEMA
+        from utils.utils import prepare_analysis_data
     except ImportError:
         print("Error: Could not import config or utils. Please ensure src/config.py and src/utils.py exist.")
         sys.exit(1)

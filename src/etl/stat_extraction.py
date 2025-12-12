@@ -1,7 +1,7 @@
 # src/stat_extraction.py
 
 import re
-from src.config import STAT_SCHEMA
+from src.utils.config import STAT_SCHEMA
 
 def extract_player_data(soup, metadata):
     """

@@ -5,10 +5,10 @@ import sys
 
 # --- Import Config ---
 try:
-    from src.config import STAT_SCHEMA
+    from utils.config import STAT_SCHEMA
 except ImportError:
     try:
-        from config import STAT_SCHEMA
+        from utils.config import STAT_SCHEMA
     except ImportError:
         print("Error: Could not import STAT_SCHEMA.")
         sys.exit(1)
