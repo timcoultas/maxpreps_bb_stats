@@ -3,29 +3,29 @@ import os
 """
 Configuration: Statistical Schema Definition
 
+Summary:
+    Centralized configuration file acting as the Master Data Dictionary and Schema Registry for the project.
+
 Context:
-    Baseball Context:
-        This is the official Scorekeeping Rulebook. Just as the umpire needs to know 
-        the difference between a hit and an error, our system needs to know exactly 
-        which numbers to pull from the box score. This file defines the specific 
-        columns we care about—ignoring the noise—so we can build a consistent 
-        scouting report for every player.
+    This is the official Scorekeeping Rulebook. Just as the umpire needs to know the difference between 
+    a hit and an error, our system needs to know exactly which numbers to pull from the box score. 
+    This file defines the specific columns we care about—ignoring the noise—so we can build a consistent 
+    scouting report for every player.
 
-    Statistical Validity:
-        Defines the Operational Definitions for all dependent variables. By explicitly 
-        mapping variable names (e.g., 'H') to specific source classes (e.g., 'hits stat dw'), 
-        we ensure construct validity. This prevents ambiguity where "Runs" could be interpreted 
-        as "Runs Scored" vs "Runs Allowed" unless strictly defined here.
+    From a statistical standpoint, this defines the Operational Definitions for all dependent variables. 
+    By explicitly mapping variable names (e.g., 'H') to specific source classes (e.g., 'hits stat dw'), 
+    we ensure construct validity. This prevents ambiguity where "Runs" could be interpreted as "Runs Scored" 
+    vs "Runs Allowed" unless strictly defined here.
 
-    Technical Implementation:
-        Think of this as the Schema Registry or DDL (Data Definition Language) for our 
-        NoSQL extraction. We are mapping JSON keys (or HTML classes) to our internal 
-        Relational Column names. This dictionary drives the entire downstream ETL process, 
-        acting as the config file that controls the `SELECT` statement in `stat_extraction.py`.
+    Technically, think of this as the DDL (Data Definition Language) for our NoSQL extraction process. 
+    We are mapping JSON keys (or HTML classes) to our internal Relational Column names. This dictionary 
+    drives the entire downstream ETL process, acting as the config file that controls the `SELECT` statement 
+    in `stat_extraction.py`.
 """
 
 # --- 1. Centralized Path Configuration ---
 # Calculate project root (3 levels up from src/utils/config.py)
+# Acts as the ROOT_PATH variable in a file storage system
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 OUTPUT_DIR = os.path.join(DATA_DIR, "output")
