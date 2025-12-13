@@ -10,6 +10,7 @@ from src.etl.metadata import extract_metadata
 from src.etl.stat_extraction import extract_player_data
 from src.etl.class_inference import infer_missing_classes
 from src.utils.config import STAT_SCHEMA
+from src.utils.config import PATHS
 
 # --- ANALYTICS IMPORTS ---
 # We import the "Main" functions from our other scripts to chain them
@@ -95,7 +96,7 @@ def main():
     # --- PHASE 1: ETL (Extract Transform Load) ---
     print(f"\n--- PHASE 1: ETL EXECUTION ({args.period}) ---")
     
-    base_raw = os.path.join('data', 'raw')
+    base_raw = PATHS['raw']
     
     if 'all' in args.teams:
         final_team_list = [d for d in os.listdir(base_raw) if os.path.isdir(os.path.join(base_raw, d))]
@@ -107,7 +108,7 @@ def main():
     for team in final_team_list:
         print(f"\nScanning: {team}/{args.period}...")
         raw_team_dir = os.path.join(base_raw, team, args.period)
-        processed_team_dir = os.path.join('data', 'processed', team, args.period)
+        processed_team_dir = os.path.join(PATHS['processed'], team, args.period)
         
         search_path = os.path.join(raw_team_dir, '*.html')
         files = glob.glob(search_path)
@@ -127,7 +128,7 @@ def main():
 
     if consolidated_data:
         print(f"\n--- Aggregation Complete ---")
-        consolidated_dir = os.path.join('data', 'processed', args.period)
+        consolidated_dir = os.path.join(PATHS['processed'], args.period)
         save_dataframe(consolidated_data, consolidated_dir, "aggregated_stats.csv")
         
         # --- PHASE 2: ANALYTICS CHAIN ---

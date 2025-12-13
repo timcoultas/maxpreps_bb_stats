@@ -54,7 +54,7 @@ def predict_2026_roster():
     # --- 1. Load Data ---
     stats_path = os.path.join('data', 'processed', 'history', 'aggregated_stats.csv')
     multipliers_path = os.path.join('data', 'development_multipliers', 'development_multipliers.csv')
-    generic_path = os.path.join('data', 'reference', 'generic_players.csv')
+    generic_path = os.path.join('data', 'output', 'generic_players', 'generic_players.csv')
 
     if not os.path.exists(stats_path):
         print(f"Error: {stats_path} not found. Please run the ETL pipeline first.")

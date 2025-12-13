@@ -1,4 +1,5 @@
-# src/config.py
+import os
+
 """
 Configuration: Statistical Schema Definition
 
@@ -23,6 +24,20 @@ Context:
         acting as the config file that controls the `SELECT` statement in `stat_extraction.py`.
 """
 
+# --- 1. Centralized Path Configuration ---
+# Calculate project root (3 levels up from src/utils/config.py)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+
+PATHS = {
+    # Inputs
+    "raw": os.path.join(DATA_DIR, "raw"),
+    "processed": os.path.join(DATA_DIR, "processed")
+}
+
+
+
+# --- 2. Statistics Configuration
 # This list functions as the Master Data Dictionary. 
 # It dictates the schema for the resulting Pandas DataFrames (tables).
 STAT_SCHEMA = [

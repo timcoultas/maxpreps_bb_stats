@@ -86,9 +86,9 @@ def analyze_team_power_rankings():
     for idx, row in team_rankings.iterrows():
         print(f"{idx+1:<5} {row['Team']:<20} {row['Total_Power_Index']:<8} {row['Offense_Index']:<10} {row['Pitching_Index']:<10} {str(row['Top_Hitter'])[:18]:<20} {str(row['Ace_Pitcher'])[:18]:<20}")
 
-    output_dir = os.path.join('data', 'output', 'analysis')
+    output_dir = os.path.join('data', 'output', 'team_strength')
     os.makedirs(output_dir, exist_ok=True)
-    save_path = os.path.join(output_dir, 'team_power_rankings.csv')
+    save_path = os.path.join(output_dir, 'team_strength_rankings.csv')
     
     # Clean up output columns
     output_cols = ['Team', 'Total_Power_Index', 'Offense_Index', 'Pitching_Index', 
