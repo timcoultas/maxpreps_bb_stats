@@ -7,12 +7,14 @@ import sys
 # Handles imports whether running from root or src/
 try:
     from src.utils.config import STAT_SCHEMA
+    from src.utils.config import PATHS
     from src.utils.utils import prepare_analysis_data
     from src.models.advanced_ranking import apply_advanced_rankings
 except ImportError:
     # Path hacking for local execution if not running as module
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
     from src.utils.config import STAT_SCHEMA
+    from src.utils.config import PATHS
     from src.utils.utils import prepare_analysis_data
     from src.models.advanced_ranking import apply_advanced_rankings
 
@@ -52,9 +54,9 @@ def predict_2026_roster():
     """
     
     # --- 1. Load Data ---
-    stats_path = os.path.join('data', 'processed', 'history', 'aggregated_stats.csv')
-    multipliers_path = os.path.join('data', 'development_multipliers', 'development_multipliers.csv')
-    generic_path = os.path.join('data', 'output', 'generic_players', 'generic_players.csv')
+    stats_path = os.path.join(PATHS['processed'], 'history', 'aggregated_stats.csv')
+    multipliers_path = os.path.join(PATHS['output'], 'development_multipliers', 'development_multipliers.csv')
+    generic_path = os.path.join(PATHS['output'], 'generic_players', 'generic_players.csv')
 
     if not os.path.exists(stats_path):
         print(f"Error: {stats_path} not found. Please run the ETL pipeline first.")
@@ -268,7 +270,7 @@ def predict_2026_roster():
     # Sort: Team -> Offensive Rank (Team) -> Pitching Rank (Team)
     df_proj = df_proj.sort_values(['Team', 'Offensive_Rank_Team', 'Pitching_Rank_Team'])
     
-    output_dir = os.path.join('data', 'output', 'roster_prediction')
+    output_dir = os.path.join(PATHS['output'], 'roster_prediction')
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, '2026_roster_prediction.csv')
     

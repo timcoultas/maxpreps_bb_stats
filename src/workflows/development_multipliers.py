@@ -6,12 +6,14 @@ import sys
 # --- Import Config & Utils ---
 try:
     from src.utils.config import STAT_SCHEMA
+    from src.utils.config import PATHS
     from src.utils.utils import prepare_analysis_data
 except ImportError:
     # Fallback for when running script directly from within src/models/
     # (Though running from root with 'python -m src.models.development_multipliers' is preferred)
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
     from src.utils.config import STAT_SCHEMA
+    from src.utils.config import PATHS
     from src.utils.utils import prepare_analysis_data
 
 def generate_stat_multipliers():
@@ -62,7 +64,7 @@ def generate_stat_multipliers():
     """
     
     # --- Load Data ---
-    input_file = os.path.join('data', 'processed', 'history', 'aggregated_stats.csv')
+    input_file = os.path.join(PATHS['processed'], 'history', 'aggregated_stats.csv')
     if not os.path.exists(input_file):
         print(f"Error: {input_file} not found.")
         return
@@ -227,7 +229,7 @@ def generate_stat_multipliers():
         df_multipliers.set_index('Transition', inplace=True)
         
         # Save
-        output_dir = os.path.join('data', 'development_multipliers')
+        output_dir = os.path.join(PATHS['output'], 'development_multipliers')
         os.makedirs(output_dir, exist_ok=True)
         
         output_file = os.path.join(output_dir, 'development_multipliers.csv')

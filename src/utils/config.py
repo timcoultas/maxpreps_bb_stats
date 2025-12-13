@@ -32,7 +32,8 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 PATHS = {
     # Inputs
     "raw": os.path.join(DATA_DIR, "raw"),
-    "processed": os.path.join(DATA_DIR, "processed")
+    "processed": os.path.join(DATA_DIR, "processed"), 
+    "output": os.path.join(DATA_DIR, "output")
 }
 
 

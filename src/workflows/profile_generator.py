@@ -6,9 +6,11 @@ import sys
 # --- Import Config ---
 try:
     from src.utils.config import STAT_SCHEMA
+    from src.utils.config import PATHS
 except ImportError:
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
     from src.utils.config import STAT_SCHEMA
+    from src.utils.config import PATHS
 
 def create_generic_profiles():
     """
@@ -44,7 +46,7 @@ def create_generic_profiles():
     """
     
     # 1. Load History
-    input_file = os.path.join('data', 'processed', 'history', 'aggregated_stats.csv')
+    input_file = os.path.join(PATHS['processed'], 'history', 'aggregated_stats.csv')
     if not os.path.exists(input_file):
         print(f"Error: {input_file} not found.")
         return
@@ -146,7 +148,7 @@ def create_generic_profiles():
     # Sort for readability
     df_profiles = df_profiles.sort_values(['Role', 'Percentile_Tier'])
     
-    output_dir = os.path.join('data', 'output', 'generic_players')
+    output_dir = os.path.join(PATHS['output'], 'generic_players')
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, 'generic_players.csv')
     
