@@ -5,27 +5,24 @@ def infer_missing_classes(df):
     Imputes missing 'Class' values (Freshman, Sophomore, etc.) based on longitudinal data.
 
     Context:
-        Baseball Context:
-            Sometimes the roster is incomplete. A player might be listed as a "Junior" in 2024,
-            but their 2023 file just lists them as "Unknown" or is missing the tag entirely.
-            We know players don't age backwards or skip grades. If we know a kid is a Senior
-            in 2025, we can safely write "Junior" on his 2024 card and "Sophomore" on his 2023 card.
-            This function fills in those blanks so we can track player development accurately.
+        Sometimes the roster is incomplete. A player might be listed as a "Junior" in 2024, but their 
+        2023 file just lists them as "Unknown" or is missing the tag entirely. We know players don't 
+        age backwards or skip grades. If we know a kid is a Senior in 2025, we can safely write 
+        "Junior" on his 2024 card and "Sophomore" on his 2023 card. This function fills in those 
+        blanks so we can track player development accurately.
 
-        Statistical Validity:
-            Performs Deterministic Imputation. Unlike mean substitution or regression imputation,
-            this logic is based on an immutable progression rule ($Class_{t} = Class_{t-1} + 1$).
-            This preserves the integrity of cohort analysis (e.g., "Sophomore Performance") by
-            maximizing the available sample size $N$ without introducing stochastic error.
+        Statistically, this performs Deterministic Imputation. Unlike mean substitution or regression 
+        imputation, this logic is based on an immutable progression rule ($Class_{t} = Class_{t-1} + 1$). 
+        This preserves the integrity of cohort analysis (e.g., "Sophomore Performance") by maximizing 
+        the available sample size $N$ without introducing stochastic error.
 
-        Technical Implementation:
-            This is a Group-Based Transformation (Window Function).
-            1. We partition the data by Player ID (Name).
-            2. We sort by Time (Season).
-            3. We identify an "Anchor Row" (a record where Class IS NOT NULL).
-            4. We apply a linear offset function: $EstimatedClass = AnchorClass - (AnchorYear - CurrentYear)$.
-            This is conceptually similar to a SQL `LAG()`/`LEAD()` operation or a recursive CTE
-            used to fill gaps in time-series data.
+        Technically, this is a Group-Based Transformation (Window Function).
+        1. We partition the data by Player ID (Name).
+        2. We sort by Time (Season).
+        3. We identify an "Anchor Row" (a record where Class IS NOT NULL).
+        4. We apply a linear offset function: $EstimatedClass = AnchorClass - (AnchorYear - CurrentYear)$.
+        This is conceptually similar to a SQL `LAG()`/`LEAD()` operation or a recursive CTE used to 
+        fill gaps in time-series data.
 
     Args:
         df (pd.DataFrame): The dataframe containing player records with potentially missing 'Class' values.
