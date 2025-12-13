@@ -24,7 +24,7 @@ def analyze_team_power_rankings():
     """
     
     # Path to the output of the roster prediction script
-    input_path = os.path.join(PATHS['output'], 'roster_prediction', '2026_roster_prediction.csv')
+    input_path = os.path.join(PATHS['out_roster_prediction'], '2026_roster_prediction.csv')
     
     if not os.path.exists(input_path):
         print(f"Error: {input_path} not found.")
@@ -93,7 +93,7 @@ def analyze_team_power_rankings():
     for idx, row in team_rankings.iterrows():
         print(f"{idx+1:<5} {row['Team']:<20} {row['Total_Power_Index']:<8} {row['Offense_Index']:<10} {row['Pitching_Index']:<10} {str(row['Top_Hitter'])[:18]:<20} {str(row['Ace_Pitcher'])[:18]:<20}")
 
-    output_dir = os.path.join(PATHS['output'], 'team_strength')
+    output_dir = PATHS['out_team_strength']
     os.makedirs(output_dir, exist_ok=True)
     save_path = os.path.join(output_dir, 'team_strength_rankings.csv')
     

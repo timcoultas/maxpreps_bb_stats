@@ -55,8 +55,8 @@ def predict_2026_roster():
     
     # --- 1. Load Data ---
     stats_path = os.path.join(PATHS['processed'], 'history', 'aggregated_stats.csv')
-    multipliers_path = os.path.join(PATHS['output'], 'development_multipliers', 'development_multipliers.csv')
-    generic_path = os.path.join(PATHS['output'], 'generic_players', 'generic_players.csv')
+    multipliers_path = os.path.join(PATHS['out_development_multipliers'], 'development_multipliers.csv')
+    generic_path = os.path.join(PATHS['out_generic_players'], 'generic_players.csv')
 
     if not os.path.exists(stats_path):
         print(f"Error: {stats_path} not found. Please run the ETL pipeline first.")
@@ -270,7 +270,7 @@ def predict_2026_roster():
     # Sort: Team -> Offensive Rank (Team) -> Pitching Rank (Team)
     df_proj = df_proj.sort_values(['Team', 'Offensive_Rank_Team', 'Pitching_Rank_Team'])
     
-    output_dir = os.path.join(PATHS['output'], 'roster_prediction')
+    output_dir = PATHS['out_roster_prediction']
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, '2026_roster_prediction.csv')
     

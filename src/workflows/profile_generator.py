@@ -148,7 +148,7 @@ def create_generic_profiles():
     # Sort for readability
     df_profiles = df_profiles.sort_values(['Role', 'Percentile_Tier'])
     
-    output_dir = os.path.join(PATHS['output'], 'generic_players')
+    output_dir = PATHS['out_generic_players']
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, 'generic_players.csv')
     

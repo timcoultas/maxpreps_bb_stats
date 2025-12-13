@@ -229,7 +229,7 @@ def generate_stat_multipliers():
         df_multipliers.set_index('Transition', inplace=True)
         
         # Save
-        output_dir = os.path.join(PATHS['output'], 'development_multipliers')
+        output_dir = PATHS['out_development_multipliers'] #os.path.join(PATHS['output'], 'development_multipliers')
         os.makedirs(output_dir, exist_ok=True)
         
         output_file = os.path.join(output_dir, 'development_multipliers.csv')

@@ -28,12 +28,16 @@ Context:
 # Calculate project root (3 levels up from src/utils/config.py)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
+OUTPUT_DIR = os.path.join(DATA_DIR, "output")
 
 PATHS = {
     # Inputs
     "raw": os.path.join(DATA_DIR, "raw"),
     "processed": os.path.join(DATA_DIR, "processed"), 
-    "output": os.path.join(DATA_DIR, "output")
+    "out_team_strength": os.path.join(OUTPUT_DIR, "team_strength"), 
+    "out_development_multipliers": os.path.join(OUTPUT_DIR, "development_multipliers"), 
+    "out_generic_players": os.path.join(OUTPUT_DIR, "generic_players"), 
+    "out_roster_prediction": os.path.join(OUTPUT_DIR, "roster_prediction")
 }
 
 # --- 2. Statistics Configuration
