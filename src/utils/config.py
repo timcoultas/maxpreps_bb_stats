@@ -88,3 +88,21 @@ STAT_SCHEMA = [
     {"abbreviation": "E",  "max_preps_class": "errors stat dw",   "stat_type": "Fielding"}, 
     {"abbreviation": "DP",  "max_preps_class": "doubleplays stat dw",   "stat_type": "Fielding"}
 ]
+
+ELITE_TEAMS = [
+    "Arvada West (Arvada, CO)",
+    "Broomfield (CO)",
+    "Chaparral (Parker, CO)",
+    "Castle View (Castle Rock, CO)",
+    "Cherry Creek (Greenwood Village, CO)",
+    "Douglas County (Castle Rock, CO)",
+    "Fossil Ridge (Fort Collins, CO)",
+    "Fruita Monument (Fruita, CO)",
+    "Grandview (Aurora, CO)",
+    "Legacy (Broomfield, CO)",
+    "Mountain Vista (Highlands Ranch, CO)",
+    "Pine Creek (Colorado Springs, CO)",
+    "Regis Jesuit (Aurora, CO)",
+    "Rock Canyon (Highlands Ranch, CO)",
+    "Rocky Mountain (Fort Collins, CO)"
+]
