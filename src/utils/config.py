@@ -36,8 +36,6 @@ PATHS = {
     "output": os.path.join(DATA_DIR, "output")
 }
 
-
-
 # --- 2. Statistics Configuration
 # This list functions as the Master Data Dictionary. 
 # It dictates the schema for the resulting Pandas DataFrames (tables).
