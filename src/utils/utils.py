@@ -5,32 +5,22 @@ def prepare_analysis_data(df):
     Standardizes player identifiers and calculates derived longitudinal metrics (Tenure).
 
     Context:
-        Baseball Context:
-            This is the "Roster Scrubbing" phase. Before we can analyze development, 
-            we need to confirm identity. Here is the catch: MaxPreps 
-            issues new Athlete IDs every season. Ben Coultas in 2023 has a 
-            completely different ID number than Ben Coultas in 2024. We standardize 
-            names to ensure we are tracking the same player's 
-            career arc across multiple seasons. We also calculate years played on varsity. 
+        This is the "Roster Scrubbing" phase. Before we can analyze development, we need to confirm 
+        identity. Here is the catch: MaxPreps issues new Athlete IDs every season. Ben Coultas in 2023 
+        has a completely different ID number than Ben Coultas in 2024. We standardize names to ensure 
+        we are tracking the same player's career arc across multiple seasons. We also calculate years 
+        played on varsity.
 
-        Statistical Validity:
-            1. Entity Resolution: Addresses the specific data quality issue of **Non-Persistent Primary Keys**. 
-               Since the source system's `athlete_id` is volatile (changing across temporal partitions), 
-               we must construct a proxy composite key based on `Name` and `Team`. This prevents 
-               "Split-Personality Bias" where a single player's history is fragmented into two 
-               unrelated records.
-            2. Feature Engineering: Derives `Varsity_Year` as an ordinal variable representing 
-               experience, which is a critical covariate for the development multiplier model.
-            3. Data Integrity: Enforces strict integer typing on Years to allow for 
-               temporal arithmetic (Year N vs Year N+1).
+        Statistically, this addresses the specific data quality issue of Non-Persistent Primary Keys. 
+        Since the source system's `athlete_id` is volatile (changing across temporal partitions), we 
+        must construct a proxy composite key based on `Name` and `Team`. This prevents "Split-Personality Bias" 
+        where a single player's history is fragmented into two unrelated records. It also handles Feature 
+        Engineering by deriving `Varsity_Year` as an ordinal variable representing experience.
 
-        Technical Implementation:
-            This acts as a Transformation View that handles "Slowly Changing Dimensions" (SCD) 
-            resolution logic.
-            1. We ignore the source's Surrogate Key (`athlete_id`) because it is not durable.
-            2. We generate a Natural Key using string manipulation: `LOWER(TRIM(Name))`.
-            3. We calculate a Window Function: `ROW_NUMBER() OVER (PARTITION BY Team, Match_Name ORDER BY Year)` 
-               to generate the sequential `Varsity_Year` ID.
+        Technically, this acts as a Transformation View that handles "Slowly Changing Dimensions" (SCD) 
+        resolution logic. We ignore the source's Surrogate Key (`athlete_id`) because it is not durable. 
+        Instead, we generate a Natural Key using string manipulation: `LOWER(TRIM(Name))`. We then calculate 
+        a Window Function (`ROW_NUMBER()`) partitioned by player to generate the sequential `Varsity_Year` ID.
 
     Args:
         df (pd.DataFrame): Raw dataframe containing at least 'Name', 'Team', and 'Season_Cleaned'.
@@ -39,6 +29,7 @@ def prepare_analysis_data(df):
         pd.DataFrame: A transformed copy of the dataframe with normalized keys and calculated tenure.
     """
     # Create a staging copy to avoid affecting the original source table (prevents SettingWithCopy)
+    # Similar to creating a TEMP TABLE in SQL
     df = df.copy()
     
     # 1. Ensure Year is Integer (Type Casting)
