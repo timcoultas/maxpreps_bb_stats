@@ -13,14 +13,30 @@ def analyze_team_power_rankings():
     """
     Analyzes the projected rosters to determine team-level strength.
     
-    Methodology:
-    1. Offense: We sum the 'RC_Score' (Runs Created) for batters. 
-       Since RC is an estimate of absolute runs contributed, summing it gives 
-       a theoretical "Total Team Runs" projection.
-       
-    2. Pitching: We sum the 'Pitching_Score' (Dominance Score) for pitchers.
-       Since this metric rewards both volume (IP) and quality (K/ER), a higher
-       sum indicates a deeper, more dominant staff.
+    Context:
+        Baseball Context:
+            This is the weekly "Power Rankings" release. It's not enough to know if one player is good; 
+            we need to know if the *team* is a contender. By summing up the individual offensive 
+            production (Runs Created) and pitching dominance (Game Scores) of the projected rosters, 
+            we can identify the heavyweights and the underdogs before the season even starts.
+
+        Statistical Validity:
+            Methodology: Aggregate Scoring.
+            1. Offense: $\sum RC_{batters}$. Since RC is an estimate of absolute runs contributed, 
+               summing it provides a theoretical "Total Team Runs" projection.
+            2. Pitching: $\sum Score_{pitchers}$. Since this metric rewards both volume (IP) and 
+               quality (K/ER), a higher sum indicates a deeper, more dominant staff.
+            3. Normalization: Converts raw sums into a 0-100 Index relative to the league maximum 
+               to allow for intuitive cross-team comparison.
+
+        Technical Implementation:
+            This is the Reporting & Aggregation Layer.
+            1. Group By: Aggregates data by `Team`.
+            2. Aggregation Functions: Uses `SUM()` for scores and `FIRST()` (after sorting) to 
+               identify the "Face of the Franchise" (Top Hitter/Ace).
+            3. Join: Performs an Outer Join between Offensive Stats and Pitching Stats tables.
+            4. Derived Column: Calculates the `Total_Power_Index` as the arithmetic mean of the 
+               normalized sub-indices.
     """
     
     # Path to the output of the roster prediction script
@@ -39,6 +55,7 @@ def analyze_team_power_rankings():
     df_batters = df[df['Is_Batter'] == True].sort_values('RC_Score', ascending=False)
     
     # Group by Team and aggregate
+    # SQL: SELECT Team, SUM(RC_Score), COUNT(*), FIRST(Name) FROM batters GROUP BY Team
     offense_stats = df_batters.groupby('Team').agg(
         Projected_Runs=('RC_Score', 'sum'),
         Batters_Count=('Name', 'count'),
@@ -63,6 +80,7 @@ def analyze_team_power_rankings():
     
     # --- 3. Combined "Power Index" ---
     # Merge the two
+    # SQL: SELECT * FROM offense FULL OUTER JOIN pitching ON offense.Team = pitching.Team
     team_rankings = pd.merge(offense_stats, pitching_stats, on='Team', how='outer').fillna(0)
     
     # Create normalized scores (0-100 scale) for easier comparison
