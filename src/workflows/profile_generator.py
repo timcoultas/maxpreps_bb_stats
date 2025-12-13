@@ -5,13 +5,10 @@ import sys
 
 # --- Import Config ---
 try:
-    from utils.config import STAT_SCHEMA
+    from src.utils.config import STAT_SCHEMA
 except ImportError:
-    try:
-        from utils.config import STAT_SCHEMA
-    except ImportError:
-        print("Error: Could not import STAT_SCHEMA.")
-        sys.exit(1)
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+    from src.utils.config import STAT_SCHEMA
 
 def create_generic_profiles():
     """

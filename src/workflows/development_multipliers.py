@@ -5,15 +5,14 @@ import sys
 
 # --- Import Config & Utils ---
 try:
-    from utils.config import STAT_SCHEMA
-    from utils.utils import prepare_analysis_data
+    from src.utils.config import STAT_SCHEMA
+    from src.utils.utils import prepare_analysis_data
 except ImportError:
-    try:
-        from utils.config import STAT_SCHEMA
-        from utils.utils import prepare_analysis_data
-    except ImportError:
-        print("Error: Could not import config or utils. Please ensure src/config.py and src/utils.py exist.")
-        sys.exit(1)
+    # Fallback for when running script directly from within src/models/
+    # (Though running from root with 'python -m src.models.development_multipliers' is preferred)
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+    from src.utils.config import STAT_SCHEMA
+    from src.utils.utils import prepare_analysis_data
 
 def generate_stat_multipliers():
     """

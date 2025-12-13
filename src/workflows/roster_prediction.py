@@ -2,20 +2,19 @@ import pandas as pd
 import numpy as np
 import os
 import sys
-from models.advanced_ranking import apply_advanced_rankings
 
 # --- Import Config & Utils ---
 # Handles imports whether running from root or src/
 try:
-    from utils.config import STAT_SCHEMA
-    from utils.utils import prepare_analysis_data
+    from src.utils.config import STAT_SCHEMA
+    from src.utils.utils import prepare_analysis_data
+    from src.models.advanced_ranking import apply_advanced_rankings
 except ImportError:
-    try:
-        from utils.config import STAT_SCHEMA
-        from utils.utils import prepare_analysis_data
-    except ImportError:
-        print("Error: Could not import config or utils. Please ensure src/config.py and src/utils.py exist.")
-        sys.exit(1)
+    # Path hacking for local execution if not running as module
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+    from src.utils.config import STAT_SCHEMA
+    from src.utils.utils import prepare_analysis_data
+    from src.models.advanced_ranking import apply_advanced_rankings
 
 def predict_2026_roster():
     """
