@@ -8,25 +8,22 @@ def extract_metadata(soup, file_name):
     of Year, Team, and Level.
 
     Context:
-        Baseball Context:
-            This is the equivalent of the pre-game plate meeting where lineup cards are exchanged.
-            Before we can track a single pitch or calculate a single stat, we must validate 
-            the game's header details. This function identifies exactly which squad we are 
-            scouting (Team), the quality of competition (Level), and the campaign year (Season) 
-            to ensure the stats are filed into the correct history books.
+        This is the equivalent of the pre-game plate meeting where lineup cards are exchanged. 
+        Before we can track a single pitch or calculate a single stat, we must validate the game's 
+        header details. This function identifies exactly which squad we are scouting (Team), the 
+        quality of competition (Level), and the campaign year (Season) to ensure the stats are 
+        filed into the correct history books.
 
-        Statistical Validity:
-            Establishes the independent categorical variables required for correct data stratification. 
-            Accurate extraction here is critical to prevent "contamination" of sample groups—ensuring 
-            Varsity stats are not commingled with JV data, and 2024 records are isolated from 2023. 
-            This serves as the primary primary key generation step for the dataset.
+        Statistically, this establishes the independent categorical variables required for correct 
+        data stratification. Accurate extraction here is critical to prevent "contamination" of 
+        sample groups—ensuring Varsity stats are not commingled with JV data, and 2024 records 
+        are isolated from 2023. This serves as the primary primary key generation step for the dataset.
 
-        Technical Implementation:
-            Think of this as an ETL extraction process running against a semi-structured document store. 
-            The HTML page is our "raw" table. We are performing a specific lookup (scanning for a script tag) 
-            to find an embedded JSON blob, similar to parsing a JSON column in Snowflake or BigQuery. 
-            Once extracted, we perform data cleansing on the 'Season' field to normalize the schema 
-            before loading it into our staging dictionary.
+        Technically, think of this as an ETL extraction process running against a semi-structured 
+        document store. The HTML page is our "raw" table. We are performing a specific lookup 
+        (scanning for a script tag) to find an embedded JSON blob, similar to parsing a JSON column 
+        in Snowflake or BigQuery. Once extracted, we perform data cleansing on the 'Season' field 
+        to normalize the schema before loading it into our staging dictionary.
 
     Args:
         soup (BeautifulSoup): The parsed HTML object acting as our source document/database.
