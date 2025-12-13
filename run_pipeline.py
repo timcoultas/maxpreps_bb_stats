@@ -64,6 +64,21 @@ def save_dataframe(data_list, output_folder, file_name):
 def run_analytics_chain():
     """
     Executes the downstream modeling and prediction tasks in specific order.
+    
+    Context:
+        Baseball Context:
+            This is the Manager calling the game. Once the data is prepped (Batting Practice is over), 
+            we need to execute the strategy in a specific sequence:
+            1. Learn from History (Calculate Multipliers)
+            2. Prepare the Reserves (Generate Generic Profiles)
+            3. Set the Lineup (Predict Rosters)
+            4. Check the Standings (Power Rankings)
+        
+        Technical Implementation:
+            This is a DAG (Directed Acyclic Graph) executed sequentially.
+            Step 1 -> Step 2 -> Step 3 -> Step 4.
+            Failure in an upstream step (e.g., Multipliers fail to generate) will cascade 
+            to downstream steps, so we execute them in dependency order.
     """
     print("\n" + "="*50)
     print("STARTING ANALYTICS CHAIN")
