@@ -8,29 +8,24 @@ def extract_player_data(soup, metadata):
     Parses HTML rows to create a unique list of players and their associated statistics.
 
     Context:
-        Baseball Context:
-            This is reading the information on the MaxPreps Player Stats for the season. 
-            We aren't scoring a single Tuesday afternoon game ; we are ingesting the season-long totals. 
-            This is the "stat sheet" that tells us a player hit .450 with 5 HRs over 
-            the entire Spring campaign.
+        This is reading the information on the MaxPreps Player Stats for the season. We aren't scoring 
+        a single Tuesday afternoon game; we are ingesting the season-long totals. This is the "stat sheet" 
+        that tells us a player hit .450 with 5 HRs over the entire Spring campaign.
 
-        Statistical Validity:
-            Establishes the Unit of Observation (The Player-Season). 
-            1. Uniqueness: Uses `AthleteID` as the primary key to ensure one record per 
-               player per season.
-            2. Aggregation Level: These are pre-calculated sums (Totals) provided by the 
-               MaxPreps, not event-level data. We are transcribing the reported population 
-               parameters for that specific season/team cohort.
-            3. Completeness: Initializes all schema fields to Null to distinguish between 
-               "Zero performance" (0 hits) and "Data not tracked" (Null).
+        Statistically, this establishes the Unit of Observation (The Player-Season). 
+        1. Uniqueness: Uses `AthleteID` as the primary key to ensure one record per player per season.
+        2. Aggregation Level: These are pre-calculated sums (Totals) provided by the MaxPreps, not 
+           event-level data. We are transcribing the reported population parameters for that specific 
+           season/team cohort.
+        3. Completeness: Initializes all schema fields to Null to distinguish between "Zero performance" 
+           (0 hits) and "Data not tracked" (Null).
 
-        Technical Implementation:
-            This functions as a "Screen Scraper" or parsing engine. 
-            1. It iterates through the DOM nodes (`tr` tags) acting as a cursor.
-            2. It uses an "Upsert" pattern (Update if exists, Insert if new) based on a 
-               Unique Constraint (`athleteid`).
-            3. It performs an Inner Join logic in Python: matching HTML `class` attributes 
-               to our `STAT_SCHEMA` configuration to map raw text to structured columns.
+        Technically, this functions as a "Screen Scraper" or parsing engine. 
+        1. It iterates through the DOM nodes (`tr` tags) acting as a cursor.
+        2. It uses an "Upsert" pattern (Update if exists, Insert if new) based on a Unique Constraint 
+           (`athleteid`).
+        3. It performs an Inner Join logic in Python: matching HTML `class` attributes to our 
+           `STAT_SCHEMA` configuration to map raw text to structured columns.
 
     Args:
         soup (BeautifulSoup): The parsed HTML object representing the season stats page.
