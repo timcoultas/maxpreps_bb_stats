@@ -29,11 +29,15 @@ Context:
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 OUTPUT_DIR = os.path.join(DATA_DIR, "output")
+INPUT_DIR = os.path.join(DATA_DIR, "input")
 
 PATHS = {
     # Inputs
     "raw": os.path.join(DATA_DIR, "raw"),
     "processed": os.path.join(DATA_DIR, "processed"), 
+    "input": INPUT_DIR,
+    
+    # Outputs
     "out_team_strength": os.path.join(OUTPUT_DIR, "team_strength"), 
     "out_development_multipliers": os.path.join(OUTPUT_DIR, "development_multipliers"), 
     "out_generic_players": os.path.join(OUTPUT_DIR, "generic_players"), 
