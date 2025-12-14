@@ -6,15 +6,13 @@ import sys
 # --- Import Config & Utils ---
 # Handles imports whether running from root or src/
 try:
-    from src.utils.config import STAT_SCHEMA
-    from src.utils.config import PATHS
+    from src.utils.config import STAT_SCHEMA, PATHS
     from src.utils.utils import prepare_analysis_data
     from src.models.advanced_ranking import apply_advanced_rankings
 except ImportError:
     # Path hacking for local execution if not running as module
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-    from src.utils.config import STAT_SCHEMA
-    from src.utils.config import PATHS
+    from src.utils.config import STAT_SCHEMA, PATHS
     from src.utils.utils import prepare_analysis_data
     from src.models.advanced_ranking import apply_advanced_rankings
 
@@ -116,22 +114,34 @@ def predict_2026_roster():
         
         if next_class == 'Unknown': continue 
 
-        # Hierarchical Lookup Logic (Coalesce)
-        # 1. Try Specific (Class + Tenure): "Sophomore Year 2 -> Junior Year 3"
-        # 2. Try Generic (Class only): "Sophomore -> Junior"
-        # 3. Default: No change
-        target = f"{curr_class}_Y{curr_tenure}_to_{next_class}_Y{next_tenure}"
-        fallback = f"{curr_class}_to_{next_class}"
+        # --- HIERARCHICAL LOOKUP STRATEGY (UPDATED) ---
+        # Ordered by Statistical Stability (Lowest Volatility First)
+        
+        # 1. Primary: Tenure Only (e.g., "Varsity Year 1 -> Year 2")
+        #    RATIONALE: Our volatility analysis confirmed that 'Varsity Experience' is the 
+        #    most stable predictor of development, particularly for upperclassmen.
+        target_tenure = f"Varsity_Year{curr_tenure}_to_Year{next_tenure}"
+        
+        # 2. Secondary: Specific Class + Tenure (e.g., "Sophomore Year 1 -> Junior Year 2")
+        #    Used if Tenure data is missing for some reason.
+        target_specific = f"{curr_class}_Y{curr_tenure}_to_{next_class}_Y{next_tenure}"
+        
+        # 3. Tertiary: Class Only (e.g., "Sophomore -> Junior")
+        #    Biological age-based fallback.
+        target_class = f"{curr_class}_to_{next_class}"
         
         applied_factors = None
         method = "None"
         
-        if target in df_multipliers.index:
-            applied_factors = df_multipliers.loc[target]
-            method = "Class_Tenure"
-        elif fallback in df_multipliers.index:
-            applied_factors = df_multipliers.loc[fallback]
-            method = "Class_Fallback"
+        if target_tenure in df_multipliers.index:
+            applied_factors = df_multipliers.loc[target_tenure]
+            method = "Tenure (Experience-Based)"
+        elif target_specific in df_multipliers.index:
+            applied_factors = df_multipliers.loc[target_specific]
+            method = "Class_Tenure (Specific)"
+        elif target_class in df_multipliers.index:
+            applied_factors = df_multipliers.loc[target_class]
+            method = "Class (Age-Based)"
         else:
             method = "Default (1.0)"
 
@@ -278,12 +288,6 @@ def predict_2026_roster():
     
     print(f"\nSuccess! Generated projected roster with {len(df_proj)} players.")
     print(f"Saved to: {output_path}")
-    
-    # Preview
-    if not df_proj.empty:
-        print("\n--- Top 5 Projected Hitters (by Team Rank) ---")
-        preview_cols = ['Team', 'Offensive_Rank_Team', 'Name', 'PA']
-        print(df_proj[preview_cols].head().to_string(index=False))
 
 if __name__ == "__main__":
     predict_2026_roster()
