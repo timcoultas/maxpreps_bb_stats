@@ -93,6 +93,8 @@ STAT_SCHEMA = [
     {"abbreviation": "DP",  "max_preps_class": "doubleplays stat dw",   "stat_type": "Fielding"}
 ]
 
+# -- This provides a group of elite teams based on their appearance in the state top 10 since 2022 (extent of historical data used in this model.)
+# -- This is used in roster predictions. 
 ELITE_TEAMS = [
     #"Arvada West (Arvada, CO)",  # only 1 time top 10 since 2022
     "Broomfield (CO)", # 2 times top 10 since 2022
