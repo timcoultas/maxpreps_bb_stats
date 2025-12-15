@@ -19,6 +19,7 @@ try:
     from src.workflows.profile_generator import create_generic_profiles
     from src.workflows.roster_prediction import predict_2026_roster
     from src.workflows.team_strength_analysis import analyze_team_power_rankings
+    from src.workflows.game_simulator import simulate_games
 except ImportError as e:
     print(f"Warning: Could not import analytics modules. Pipeline will run ETL only.\nError: {e}")
 
@@ -99,6 +100,10 @@ def run_analytics_chain():
     # Step 4: Analyze Strength (The "Reporting" Phase)
     print("\n--- Step 4: Analyzing Team Strength ---")
     analyze_team_power_rankings()
+
+    #step 5: Run Game Simulator
+    print("\n--- Step 5: Game Simulator ---")
+    simulate_games()
 
 def main():
     parser = argparse.ArgumentParser(description="Run Full Baseball Analytics Pipeline")
