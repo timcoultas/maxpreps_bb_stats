@@ -30,14 +30,32 @@ except ImportError:
 
 def predict_2026_roster():
     """
-    Generates a projected roster for the next season (2026).
-    
-    UPDATES (Post-Adversarial Review + User Config):
-    1. Lookup Strategy: Prioritizes 'Class' transitions to avoid Survivor Bias.
-    2. Dynamic Backfill: 
-       - Powerhouses (from ELITE_TEAMS) get 50th Percentile replacements.
-       - Others get 20th Percentile replacements (Floor).
-    3. Logging: Adds warnings for hard caps.
+    Generates a projected roster for the next season (2026) using hierarchical aging curves and dynamic backfilling.
+
+    Context:
+        Baseball Perspective: This is the "GM Mode" of the application. We are looking at our returning 
+        players and asking, "How much better will they get?" We know a Freshman becoming a Sophomore 
+        makes a bigger jump than a Junior becoming a Senior. We also know that rosters have holes. 
+        Seniors graduate. This script fills those holes with "Generic Players" (call-ups from JV/Frosh) 
+        based on the program's prestige. Elite programs reload (get average players); rebuilding programs 
+        rebuild (get replacement-level players).
+
+        Statistical Validity:
+        1. Projection Logic: We use a "Hierarchical Lookup" to avoid Small Sample Size noise. We prefer 
+           class-based aging curves (e.g., Freshman->Sophomore multiplier) over tenure-based ones because 
+           tenure data suffers from "Survivor Bias" (only good players play as Freshmen, skewing the 
+           "Year 1 to Year 2" curve).
+        2. Imputation: Missing players are backfilled using percentile-based generic profiles. This maintains 
+           the population distribution shape rather than filling with mean values (which reduces variance).
+
+        Technical Implementation: 
+        1. Hierarchical Lookup: This mimics a SQL `COALESCE` across multiple joined tables. 
+           `COALESCE(Class_Multiplier, Specific_Multiplier, Tenure_Multiplier, 1.0)`.
+        2. Dynamic Backfill: This is an Upsert/Imputation process. We identify gaps (COUNT < 9) and 
+           append synthesized rows based on a configuration list (`ELITE_TEAMS`).
+
+    Returns:
+        None. Generates a CSV file.
     """
     
     # --- 1. Load Data ---
@@ -53,6 +71,7 @@ def predict_2026_roster():
         return
         
     print("Loading data...")
+    # Loading the "Fact Table" (History) and "Dimension Tables" (Multipliers)
     df_history = pd.read_csv(stats_path)
     df_multipliers = pd.read_csv(multipliers_path)
     df_multipliers.set_index('Transition', inplace=True)
@@ -66,6 +85,7 @@ def predict_2026_roster():
         print("Warning: generic_players.csv not found. Rosters will NOT be backfilled.")
 
     # --- 2. Prep History (Centralized Logic) ---
+    # Schema Enforcement: Ensuring columns defined in config actually exist and are numeric
     stat_cols = [s['abbreviation'] for s in STAT_SCHEMA if s['abbreviation'] in df_history.columns]
     for col in stat_cols:
         df_history[col] = pd.to_numeric(df_history[col], errors='coerce')
@@ -74,14 +94,17 @@ def predict_2026_roster():
     df_history = prepare_analysis_data(df_history)
     
     # --- 3. Isolate 2025 Roster ---
+    # Filtering for the base year. SQL: WHERE Season_Year = 2025
     df_2025 = df_history[df_history['Season_Year'] == 2025].copy()
     
+    # Fallback mechanism if 2025 data is missing (e.g., historical run)
     if df_2025.empty:
         max_year = df_history['Season_Year'].max()
         print(f"Warning: No 2025 data. Switching to {max_year}")
         df_2025 = df_history[df_history['Season_Year'] == max_year].copy()
 
     # Remove graduating Seniors
+    # SQL: WHERE Class_Cleaned != 'Senior'
     df_2025 = df_2025[~df_2025['Class_Cleaned'].isin(['Senior'])]
     
     print(f"\nFound {len(df_2025)} returning players from base roster.")
@@ -92,6 +115,7 @@ def predict_2026_roster():
 
     print("Projecting performance...")
     
+    # Iterating through rows (Cursor). Vectorization is difficult here due to the complex lookup logic per player.
     for idx, player in df_2025.iterrows():
         curr_class = player['Class_Cleaned']
         curr_tenure = player['Varsity_Year']
@@ -110,15 +134,16 @@ def predict_2026_roster():
         applied_factors = None
         method = "None"
         
-        # Priority 1: Class (Biological Age)
+        # Priority Queue Logic (COALESCE)
+        # Priority 1: Class (Biological Age) - Most robust sample size, least selection bias.
         if target_class in df_multipliers.index:
             applied_factors = df_multipliers.loc[target_class]
             method = "Class (Age-Based)"
-        # Priority 2: Specific Class + Tenure 
+        # Priority 2: Specific Class + Tenure - High specificity, but lower sample size.
         elif target_specific in df_multipliers.index:
             applied_factors = df_multipliers.loc[target_specific]
             method = "Class_Tenure (Specific)"
-        # Priority 3: Tenure Only 
+        # Priority 3: Tenure Only - Prone to survivor bias (only elite freshmen play Y1).
         elif target_tenure in df_multipliers.index:
             applied_factors = df_multipliers.loc[target_tenure]
             method = "Tenure (Experience-Based)"
@@ -140,7 +165,8 @@ def predict_2026_roster():
                     multiplier = applied_factors[col]
                     proj[col] = round(player[col] * multiplier, 2)
                     
-                    # Sanity Caps
+                    # Sanity Caps (Business Rules)
+                    # Preventing extrapolation errors (e.g., projecting 100 innings pitched).
                     if col == 'IP' and proj[col] > 70: 
                         proj[col] = 70.0
                     if col == 'APP' and proj[col] > 25: 
@@ -155,10 +181,12 @@ def predict_2026_roster():
         return
 
     # --- 5. Assign Roles (Initial) ---
+    # Boolean masking to identify role capabilities based on stats.
     df_proj['Is_Pitcher'] = df_proj['IP'].fillna(0) >= 5
     df_proj['Is_Batter'] = df_proj['AB'].fillna(0) >= 10
 
     # --- 6. Backfill Rosters with Tiered Generics (DYNAMIC) ---
+    # Imputation Strategy for missing data (empty roster spots).
     if not df_generic.empty:
         print("\nChecking roster minimums (9 Batters, 6 Pitchers)...")
         
@@ -176,11 +204,13 @@ def predict_2026_roster():
             # --- Powerhouse Logic ---
             # If team is in ELITE_TEAMS, they get 50th %ile (Average) replacements.
             # Otherwise, they get 20th %ile (Replacement Level) replacements.
+            # Baseball Rationale: Good programs have "Next Man Up." Bad programs have holes.
             is_powerhouse = team in ELITE_TEAMS
             target_tier = 0.5 if is_powerhouse else 0.2
             method_label = 'Backfill (Elite)' if is_powerhouse else 'Backfill (Floor)'
 
             # Filter Pool for this specific team's needs
+            # SQL: SELECT * FROM Generic WHERE Role = 'Batter' AND Percentile = target_tier
             bat_pool = df_generic[(df_generic['Role'] == 'Batter') & (df_generic['Percentile_Tier'] == target_tier)]
             pit_pool = df_generic[(df_generic['Role'] == 'Pitcher') & (df_generic['Percentile_Tier'] == target_tier)]
             
@@ -204,6 +234,7 @@ def predict_2026_roster():
                     new_player['Is_Pitcher'] = False
                     new_player['Projection_Method'] = method_label
                     
+                    # Cleanup internal columns
                     for k in ['Role', 'Percentile_Tier']:
                         new_player.pop(k, None)
                     filled_players.append(new_player)
@@ -232,9 +263,11 @@ def predict_2026_roster():
             df_proj = pd.concat([df_proj, df_filled], ignore_index=True)
 
     # --- 7. Calculate Ranks (Final) ---
+    # Re-running the ranking engine on the final projected dataset
     df_proj = apply_advanced_rankings(df_proj)
 
     # --- 8. Save ---
+    # Selecting columns for final output (Projection / View Definition)
     meta_cols_start = ['Team', 'Name',  'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 'Projection_Method',  'Offensive_Rank_Team', 'Pitching_Rank_Team']
     meta_cols_end = [
         'Is_Batter', 'Is_Pitcher', 'Offensive_Rank',
