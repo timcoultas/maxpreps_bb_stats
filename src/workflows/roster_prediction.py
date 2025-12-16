@@ -30,16 +30,15 @@ except ImportError:
 # FIX: Changed default floor from 0.2 to 0.3 based on adversarial review.
 # 20th percentile sophomores have median 0 hits (RC_Score = 0), representing
 # cameo appearances. 30th percentile provides meaningful offensive contribution.
-DEFAULT_FLOOR_PERCENTILE = 0.3
-DEFAULT_ELITE_PERCENTILE = 0.5
+DEFAULT_PERCENTILE_LADDER = [0.3, 0.2, 0.1]
+ELITE_PERCENTILE_LADDER = [0.5, 0.4, 0.3, 0.2]
 
 # Roster minimums for backfill logic
 MIN_BATTERS = 9
 MIN_PITCHERS = 6
 
-#Historical multipliers are based only on players who didn't quit. This inflates expectations for the 2026 roster (which includes future quitters)
+# FIX: Add adjustment for survivor bias
 SURVIVOR_BIAS_ADJUSTMENT = 0.95 
-
 
 def format_ip_output(val):
     """Converts 3.333 -> 3.1"""
@@ -204,10 +203,9 @@ def predict_2026_roster():
             for col in stat_cols:
                 if col in applied_factors and pd.notna(player[col]):
                     multiplier = applied_factors[col]
-                    # [FIX] Apply Churn Penalty
-                    final_val = player[col] * multiplier * SURVIVOR_BIAS_ADJUSTMENT
-                    proj[col] = round(player[col] * multiplier, 2)
-
+                    # FIX: Apply Survivor Bias Adjustment here
+                    proj[col] = round(player[col] * multiplier * SURVIVOR_BIAS_ADJUSTMENT, 2)
+                    
                     # Sanity Caps to prevent extrapolation errors
                     if col == 'IP' and proj[col] > 70: 
                         proj[col] = 70.0
@@ -249,29 +247,43 @@ def predict_2026_roster():
             n_pitchers = team_roster['Is_Pitcher'].sum()
             
             # Determine tier based on program prestige
-            # Elite programs get 50th percentile ("next man up" depth)
-            # Other programs get 30th percentile ("replacement level")
             is_powerhouse = team in ELITE_TEAMS
-            # FIX: Use 0.3 instead of 0.2 for floor tier
-            target_tier = DEFAULT_ELITE_PERCENTILE if is_powerhouse else DEFAULT_FLOOR_PERCENTILE
-            method_label = 'Backfill (Elite)' if is_powerhouse else 'Backfill (Floor)'
+            
+            # [FIX] Step-Down Logic for Realistic Depth
+            # Elite teams: 50% -> 40% -> 30% -> 20% (Floor)
+            # Standard teams: 30% -> 20% -> 10% -> 10% (Floor)
+            if is_powerhouse:
+                tier_ladder_batters = ELITE_PERCENTILE_LADDER
+                tier_ladder_pitchers = ELITE_PERCENTILE_LADDER
+                method_label = 'Backfill (Elite Step-Down)'
+            else:
+                tier_ladder_batters = DEFAULT_PERCENTILE_LADDER
+                tier_ladder_pitchers = DEFAULT_PERCENTILE_LADDER
+                method_label = 'Backfill (Standard Step-Down)'
 
             # Filter generic pool for this team's tier
-            # SQL: SELECT * FROM Generic WHERE Role = 'Batter' AND Percentile_Tier = target
-            bat_pool = df_generic[(df_generic['Role'] == 'Batter') & (df_generic['Percentile_Tier'] == target_tier)]
-            pit_pool = df_generic[(df_generic['Role'] == 'Pitcher') & (df_generic['Percentile_Tier'] == target_tier)]
+            bat_pool = df_generic[df_generic['Role'] == 'Batter']
+            pit_pool = df_generic[df_generic['Role'] == 'Pitcher']
             
-            # Fallback if specific tier missing
-            if bat_pool.empty:
-                 bat_pool = df_generic[df_generic['Role'] == 'Batter'].sort_values('Percentile_Tier', ascending=(not is_powerhouse))
-            if pit_pool.empty:
-                 pit_pool = df_generic[df_generic['Role'] == 'Pitcher'].sort_values('Percentile_Tier', ascending=(not is_powerhouse))
-
             # Add Batters (Imputation)
             if n_batters < MIN_BATTERS and not bat_pool.empty:
                 needed = MIN_BATTERS - int(n_batters)
                 for i in range(needed):
-                    template = bat_pool.iloc[i % len(bat_pool)].to_dict()
+                    # [FIX] Pop the best available tier, or use floor if ladder exhausted
+                    if i < len(tier_ladder_batters):
+                        target_tier = tier_ladder_batters[i]
+                    else:
+                        target_tier = tier_ladder_batters[-1] # Floor
+                    
+                    # Find closest match in the pool
+                    candidate = bat_pool[bat_pool['Percentile_Tier'] == target_tier]
+                    
+                    # Fallback to closest if exact tier missing
+                    if candidate.empty:
+                        candidate = bat_pool.iloc[0:1] # Just take top of pool as fail-safe
+
+                    template = candidate.iloc[0].to_dict()
+                    
                     new_player = template.copy()
                     new_player['Team'] = team
                     pct_label = int(template.get('Percentile_Tier', 0) * 100)
@@ -286,11 +298,23 @@ def predict_2026_roster():
                         new_player.pop(k, None)
                     filled_players.append(new_player)
 
-            # Add Pitchers (Imputation)
+            # Add Pitchers (Same Logic)
             if n_pitchers < MIN_PITCHERS and not pit_pool.empty:
                 needed = MIN_PITCHERS - int(n_pitchers)
                 for i in range(needed):
-                    template = pit_pool.iloc[i % len(pit_pool)].to_dict()
+                    # [FIX] Step-Down Logic
+                    if i < len(tier_ladder_pitchers):
+                        target_tier = tier_ladder_pitchers[i]
+                    else:
+                        target_tier = tier_ladder_pitchers[-1]
+
+                    candidate = pit_pool[pit_pool['Percentile_Tier'] == target_tier]
+                    
+                    if candidate.empty:
+                        candidate = pit_pool.iloc[0:1]
+
+                    template = candidate.iloc[0].to_dict()
+                    
                     new_player = template.copy()
                     new_player['Team'] = team
                     pct_label = int(template.get('Percentile_Tier', 0) * 100)
@@ -312,7 +336,6 @@ def predict_2026_roster():
     # --- 7. Calculate Ranks (Final) ---
     df_proj = apply_advanced_rankings(df_proj)
 
-
     # --- 8. Save ---
     meta_cols_start = ['Team', 'Name', 'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 
                        'Projection_Method', 'Offensive_Rank_Team', 'Pitching_Rank_Team']
@@ -326,14 +349,14 @@ def predict_2026_roster():
     df_proj = df_proj[final_cols]
     df_proj = df_proj.sort_values(['Team', 'Offensive_Rank_Team', 'Pitching_Rank_Team'])
     
-    output_dir = PATHS['out_roster_prediction']
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, '2026_roster_prediction.csv')
-
-   # --- Cosmetic clean up of IP --- 
+    # [FIX] Format IP column for final output (3.333 -> 3.1)
     if 'IP' in df_proj.columns:
         df_proj['IP'] = df_proj['IP'].apply(format_ip_output)
 
+    output_dir = PATHS['out_roster_prediction']
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, '2026_roster_prediction.csv')
+    
     df_proj.to_csv(output_path, index=False)
     
     # FIX: Final pipeline summary
