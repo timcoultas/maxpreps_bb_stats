@@ -9,6 +9,8 @@ import sys
 from src.etl.metadata import extract_metadata
 from src.etl.stat_extraction import extract_player_data
 from src.etl.class_inference import infer_missing_classes
+# [NEW] Import the fix script
+from src.etl.class_cleansing import fix_class_progression 
 from src.utils.config import STAT_SCHEMA
 from src.utils.config import PATHS
 
@@ -46,6 +48,10 @@ def save_dataframe(data_list, output_folder, file_name):
     df = pd.DataFrame(data_list)
     print("   -> Running Class Inference...")
     df = infer_missing_classes(df)
+    
+    # [NEW] Run the Progression Fixer
+    # This catches players listed as Sophomores two years in a row
+    df = fix_class_progression(df)
 
     fixed_cols = ['Season', 'Season_Cleaned', 'Team', 'Level', 'Source_File', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
     schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]
@@ -155,8 +161,28 @@ def main():
 
     if consolidated_data:
         print(f"\n--- Aggregation Complete ---")
+        # [FIX] Convert list of dicts to DataFrame for processing
+        df_consolidated = pd.DataFrame(consolidated_data)
+        
+        print("   -> Running Class Inference on Consolidated Data...")
+        df_consolidated = infer_missing_classes(df_consolidated)
+        
+        # [NEW] Run the Progression Fixer on the full dataset
+        # This is the most important call, as it catches cross-year issues
+        df_consolidated = fix_class_progression(df_consolidated)
+
+        # Ensure correct column order
+        fixed_cols = ['Season', 'Season_Cleaned', 'Team', 'Level', 'Source_File', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
+        schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]
+        final_cols = fixed_cols + [c for c in schema_cols if c in df_consolidated.columns]
+        df_consolidated = df_consolidated.reindex(columns=final_cols)
+
+        # Removed sorting logic that caused volatility issues
+        # if all(col in df_consolidated.columns for col in ['Team', 'Name', 'Season_Cleaned']):
+        #      df_consolidated = df_consolidated.sort_values(by=['Team', 'Name', 'Season_Cleaned'])
+
         consolidated_dir = os.path.join(PATHS['processed'], args.period)
-        save_dataframe(consolidated_data, consolidated_dir, "aggregated_stats.csv")
+        save_dataframe(df_consolidated.to_dict('records'), consolidated_dir, "aggregated_stats.csv")
         
         # --- PHASE 2: ANALYTICS CHAIN ---
         # Only run if we actually processed data and user didn't skip it
