@@ -134,7 +134,13 @@ def generate_stat_multipliers():
                 continue
 
             # Calculate Ratios
-            ratios = subset[f'{col}_Next'] / subset[f'{col}_Prev']
+            # Use Laplacian Smoothing for rare events to dampen noise
+            # Instead of: ratios = subset[next] / subset[prev]
+            if col in ['3B', 'HR', '3B_P', 'HR_P']:
+                # Add 1 to numerator and denominator to pull towards 1.0
+                ratios = (subset[f'{col}_Next'] + 1) / (subset[f'{col}_Prev'] + 1)
+            else:
+                ratios = subset[f'{col}_Next'] / subset[f'{col}_Prev']
             
             # 1. The Multiplier (Median is robust)
             transition_stats[col] = round(ratios.median(), 3)

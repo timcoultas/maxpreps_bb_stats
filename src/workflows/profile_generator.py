@@ -21,8 +21,8 @@ DEFAULT_ELITE_PERCENTILE = 0.5
 
 # Minimum playing time thresholds to qualify as a "real" player profile
 # Players below these thresholds are filtered out before percentile calculation
-MIN_PA_FOR_BATTER_PROFILE = 10
-MIN_IP_FOR_PITCHER_PROFILE = 3
+MIN_PA_FOR_BATTER_PROFILE = 15
+MIN_IP_FOR_PITCHER_PROFILE = 6
 
 
 def create_generic_profiles():

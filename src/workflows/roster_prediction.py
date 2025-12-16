@@ -37,6 +37,20 @@ DEFAULT_ELITE_PERCENTILE = 0.5
 MIN_BATTERS = 9
 MIN_PITCHERS = 6
 
+#Historical multipliers are based only on players who didn't quit. This inflates expectations for the 2026 roster (which includes future quitters)
+SURVIVOR_BIAS_ADJUSTMENT = 0.95 
+
+
+def format_ip_output(val):
+    """Converts 3.333 -> 3.1"""
+    if pd.isna(val): return 0.0
+    innings = int(val)
+    decimal = val - innings
+    
+    # Map decimal ranges back to .1 or .2
+    if 0.25 < decimal < 0.5: return innings + 0.1
+    if 0.5 < decimal < 0.8: return innings + 0.2
+    return float(innings)
 
 def predict_2026_roster():
     """
@@ -190,8 +204,10 @@ def predict_2026_roster():
             for col in stat_cols:
                 if col in applied_factors and pd.notna(player[col]):
                     multiplier = applied_factors[col]
+                    # [FIX] Apply Churn Penalty
+                    final_val = player[col] * multiplier * SURVIVOR_BIAS_ADJUSTMENT
                     proj[col] = round(player[col] * multiplier, 2)
-                    
+
                     # Sanity Caps to prevent extrapolation errors
                     if col == 'IP' and proj[col] > 70: 
                         proj[col] = 70.0
@@ -296,6 +312,7 @@ def predict_2026_roster():
     # --- 7. Calculate Ranks (Final) ---
     df_proj = apply_advanced_rankings(df_proj)
 
+
     # --- 8. Save ---
     meta_cols_start = ['Team', 'Name', 'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 
                        'Projection_Method', 'Offensive_Rank_Team', 'Pitching_Rank_Team']
@@ -312,7 +329,11 @@ def predict_2026_roster():
     output_dir = PATHS['out_roster_prediction']
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, '2026_roster_prediction.csv')
-    
+
+   # --- Cosmetic clean up of IP --- 
+    if 'IP' in df_proj.columns:
+        df_proj['IP'] = df_proj['IP'].apply(format_ip_output)
+
     df_proj.to_csv(output_path, index=False)
     
     # FIX: Final pipeline summary
