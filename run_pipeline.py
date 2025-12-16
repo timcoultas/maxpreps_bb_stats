@@ -110,9 +110,16 @@ def main():
     parser.add_argument('--period', type=str, required=True, help='Target subfolder (e.g., history, 2025)')
     parser.add_argument('--teams', nargs='+', default=['all'], help='Specific teams to process')
     parser.add_argument('--skip-analysis', action='store_true', help='If set, stops after ETL and does not run projections')
+    parser.add_argument('--run-analysis-only', action='store_true', help='If set, skips ETL and runs only the analytics chain')
     
     args = parser.parse_args()
     
+    # Check for analysis-only mode first
+    if args.run_analysis_only:
+        print(f"\n--- SKIPPING ETL: Running Analytics Chain Only ({args.period}) ---")
+        run_analytics_chain()
+        return
+
     # --- PHASE 1: ETL (Extract Transform Load) ---
     print(f"\n--- PHASE 1: ETL EXECUTION ({args.period}) ---")
     

@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np # Import numpy for NaN checks
 
 def prepare_analysis_data(df):
     """
@@ -61,3 +62,38 @@ def prepare_analysis_data(df):
     df['Varsity_Year'] = df.groupby(['Match_Team', 'Match_Name']).cumcount() + 1
     
     return df
+
+def convert_ip_to_decimal(ip_series):
+    """
+    Converts baseball IP notation (10.1 = 10 and 1/3) to proper decimal (10.333).
+    
+    Args:
+        ip_series (pd.Series or float): IP values in format X.0, X.1, X.2
+    
+    Returns:
+        pd.Series or float: IP values in proper decimal format
+    """
+    # If scalar, wrap in series
+    is_scalar = False
+    if isinstance(ip_series, (float, int)):
+        ip_series = pd.Series([ip_series])
+        is_scalar = True
+
+    # FIX: Handle NaN or infinite values by filling with 0
+    # This prevents the 'IntCastingNaNError' when converting to integer
+    ip_series = ip_series.fillna(0).replace([np.inf, -np.inf], 0)
+
+    # Split into integer and decimal parts
+    # 10.1 -> 10 + 0.1
+    innings = ip_series.astype(int)
+    outs = (ip_series - innings).round(1) * 10 # 0.1 -> 1.0, 0.2 -> 2.0
+    
+    # Map .1 to .333 and .2 to .666
+    # We use a tolerant mapping just in case of float artifacts
+    decimal_outs = outs.apply(lambda x: 0.3333 if 0.8 <= x <= 1.2 else (0.6667 if 1.8 <= x <= 2.2 else 0.0))
+    
+    result = innings + decimal_outs
+    
+    if is_scalar:
+        return result.iloc[0]
+    return result

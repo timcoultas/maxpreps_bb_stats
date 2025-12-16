@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from src.utils.utils import convert_ip_to_decimal
 
 def calculate_offensive_score(df):
     """
@@ -106,10 +107,14 @@ def calculate_pitching_score(df):
             print(f"[Warning] Column '{col}' missing from dataframe. Imputing 0.")
             df[col] = 0
 
+    # Convert IP to true decimal for math
+    # Note: We keep raw 'IP' for display, but use 'IP_Math' for calculation
+    df['IP_Math'] = convert_ip_to_decimal(df['IP'])
+
     # Weighted sum aggregation across columns
     # Positive weights reward: Innings (durability) and Strikeouts (dominance)
     # Negative weights penalize: Walks (lack of control) and Earned Runs (damage)
-    score = (df['IP'] * 1.5) + \
+    score = (df['IP_Math'] * 1.5) + \
             (df['K'] * 1.0) - \
             (df['BB'] * 1.0) - \
             (df['ER'] * 2.0)
