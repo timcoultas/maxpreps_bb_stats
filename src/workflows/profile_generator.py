@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+import warnings
 
 # --- Import Config ---
 try:
@@ -100,7 +101,7 @@ def create_generic_profiles():
         """
         # FIX: Filter for minimum playing time BEFORE calculating percentiles
         # This ensures we're ranking "real" players, not single-AB cameos
-        # SQL: WHERE PA >= 10 (for batters) or WHERE IP >= 3 (for pitchers)
+        # SQL: WHERE PA >= 15 (for batters) or WHERE IP >= 6 (for pitchers)
         if role == 'Batter':
             df_subset = df_subset[df_subset[metric_col] >= MIN_PA_FOR_BATTER_PROFILE].copy()
         else:
@@ -136,67 +137,74 @@ def create_generic_profiles():
                     (df_subset['pct_rank'] <= upper_bound + 0.05)
                 ]
 
-            if not bucket.empty:
-                profile = {
-                    'Name': f"Generic Sophomore {role} ({int(q*100)}th %ile)",
-                    'Role': role,
-                    'Class_Cleaned': 'Sophomore',
-                    'Varsity_Year': 1,
-                    'Projection_Method': 'Generic Baseline',
-                    'Percentile_Tier': q
-                }
-                
-                # Calculate Median stats for this bucket
-                # SQL: SELECT MEDIAN(col) FROM bucket
+            # Skip if still empty after fallback expansion
+            if bucket.empty:
+                continue
+
+            profile = {
+                'Name': f"Generic Sophomore {role} ({int(q*100)}th %ile)",
+                'Role': role,
+                'Class_Cleaned': 'Sophomore',
+                'Varsity_Year': 1,
+                'Projection_Method': 'Generic Baseline',
+                'Percentile_Tier': q
+            }
+            
+            # Calculate Median stats for this bucket
+            # SQL: SELECT MEDIAN(col) FROM bucket
+            # Suppress RuntimeWarning for empty slices (can occur with sparse data)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
                 for col in stat_cols:
-                    profile[col] = round(bucket[col].median(), 2)
-                
-                # [FIX START] ----------------------------------------------------
-                # Mask irrelevant stats to prevent role contamination.
-                # This ensures the generic_players.csv file is clean and human-readable.
-                
-                if role == 'Batter':
-                    # Clear ALL pitching columns
-                    # We iterate through known pitching columns from schema or hardcoded list
-                    # It's safer to be explicit to avoid accidentally clearing shared metadata
-                    pitching_columns_to_clear = [
-                        'IP', 'ERA', 'K_P', 'ER', 'BB_P', 'H_P', 'BF', 'APP', 
-                        '2B_P', '3B_P', 'HR_P', 'BAA'
-                    ]
-                    for p_col in pitching_columns_to_clear:
-                        # Only set to 0.0 if the column actually exists in the profile
-                        if p_col in profile:
-                            profile[p_col] = 0.0
-                            
-                elif role == 'Pitcher':
-                    # Clear ALL batting columns
-                    # A pitcher might hit, but for a "Generic Pitcher" slot, we want pure pitching signal
-                    batting_columns_to_clear = [
-                        'PA', 'AB', 'H', 'BB', '2B', '3B', 'HR', 'RBI', 'R', 'SF', 
-                        'K', 'HBP', 'OBP', 'SLG', 'AVG', 'OPS', 'SB'
-                    ]
-                    for b_col in batting_columns_to_clear:
-                        if b_col in profile:
-                            profile[b_col] = 0.0
-                # [FIX END] ------------------------------------------------------
+                    median_val = bucket[col].median()
+                    profile[col] = round(median_val, 2) if pd.notna(median_val) else 0.0
+            
+            # [FIX START] ----------------------------------------------------
+            # Mask irrelevant stats to prevent role contamination.
+            # This ensures the generic_players.csv file is clean and human-readable.
+            
+            if role == 'Batter':
+                # Clear ALL pitching columns
+                # We iterate through known pitching columns from schema or hardcoded list
+                # It's safer to be explicit to avoid accidentally clearing shared metadata
+                pitching_columns_to_clear = [
+                    'IP', 'ERA', 'K_P', 'ER', 'BB_P', 'H_P', 'BF', 'APP', 
+                    '2B_P', '3B_P', 'HR_P', 'BAA'
+                ]
+                for p_col in pitching_columns_to_clear:
+                    # Only set to 0.0 if the column actually exists in the profile
+                    if p_col in profile:
+                        profile[p_col] = 0.0
+                        
+            elif role == 'Pitcher':
+                # Clear ALL batting columns
+                # A pitcher might hit, but for a "Generic Pitcher" slot, we want pure pitching signal
+                batting_columns_to_clear = [
+                    'PA', 'AB', 'H', 'BB', '2B', '3B', 'HR', 'RBI', 'R', 'SF', 
+                    'K', 'HBP', 'OBP', 'SLG', 'AVG', 'OPS', 'SB'
+                ]
+                for b_col in batting_columns_to_clear:
+                    if b_col in profile:
+                        profile[b_col] = 0.0
+            # [FIX END] ------------------------------------------------------
 
-                # FIX: Store original values before applying minimums
-                # This maintains data integrity for any downstream rate calculations
-                if role == 'Batter':
-                    profile['AB_Original'] = profile.get('AB', 0)
-                    profile['PA_Original'] = profile.get('PA', 0)
-                else:
-                    profile['IP_Original'] = profile.get('IP', 0)
-                
-                # Enforce minimums to ensure players qualify for Is_Batter/Is_Pitcher flags
-                # Note: This is for roster_prediction.py thresholds (AB >= 10, IP >= 5)
-                if role == 'Batter' and profile.get('AB', 0) < 10:
-                     profile['AB'] = max(profile.get('AB', 0), 10.0)
-                
-                if role == 'Pitcher' and profile.get('IP', 0) < 5:
-                     profile['IP'] = max(profile.get('IP', 0), 5.0)
+            # FIX: Store original values before applying minimums
+            # This maintains data integrity for any downstream rate calculations
+            if role == 'Batter':
+                profile['AB_Original'] = profile.get('AB', 0)
+                profile['PA_Original'] = profile.get('PA', 0)
+            else:
+                profile['IP_Original'] = profile.get('IP', 0)
+            
+            # Enforce minimums to ensure players qualify for Is_Batter/Is_Pitcher flags
+            # Note: This is for roster_prediction.py thresholds (AB >= 10, IP >= 5)
+            if role == 'Batter' and profile.get('AB', 0) < 10:
+                 profile['AB'] = max(profile.get('AB', 0), 10.0)
+            
+            if role == 'Pitcher' and profile.get('IP', 0) < 5:
+                 profile['IP'] = max(profile.get('IP', 0), 5.0)
 
-                generated.append(profile)
+            generated.append(profile)
                 
         return generated
 
