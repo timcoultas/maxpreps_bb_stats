@@ -151,6 +151,35 @@ def create_generic_profiles():
                 for col in stat_cols:
                     profile[col] = round(bucket[col].median(), 2)
                 
+                # [FIX START] ----------------------------------------------------
+                # Mask irrelevant stats to prevent role contamination.
+                # This ensures the generic_players.csv file is clean and human-readable.
+                
+                if role == 'Batter':
+                    # Clear ALL pitching columns
+                    # We iterate through known pitching columns from schema or hardcoded list
+                    # It's safer to be explicit to avoid accidentally clearing shared metadata
+                    pitching_columns_to_clear = [
+                        'IP', 'ERA', 'K_P', 'ER', 'BB_P', 'H_P', 'BF', 'APP', 
+                        '2B_P', '3B_P', 'HR_P', 'BAA'
+                    ]
+                    for p_col in pitching_columns_to_clear:
+                        # Only set to 0.0 if the column actually exists in the profile
+                        if p_col in profile:
+                            profile[p_col] = 0.0
+                            
+                elif role == 'Pitcher':
+                    # Clear ALL batting columns
+                    # A pitcher might hit, but for a "Generic Pitcher" slot, we want pure pitching signal
+                    batting_columns_to_clear = [
+                        'PA', 'AB', 'H', 'BB', '2B', '3B', 'HR', 'RBI', 'R', 'SF', 
+                        'K', 'HBP', 'OBP', 'SLG', 'AVG', 'OPS', 'SB'
+                    ]
+                    for b_col in batting_columns_to_clear:
+                        if b_col in profile:
+                            profile[b_col] = 0.0
+                # [FIX END] ------------------------------------------------------
+
                 # FIX: Store original values before applying minimums
                 # This maintains data integrity for any downstream rate calculations
                 if role == 'Batter':
