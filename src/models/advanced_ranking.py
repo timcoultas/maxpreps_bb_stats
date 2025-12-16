@@ -43,7 +43,7 @@ def calculate_offensive_score(df):
     req_cols = ['H', 'BB', 'AB', '2B', '3B', 'HR']
     for col in req_cols:
         if col not in df.columns:
-            print(f"[Warning] Column '{col}' missing from dataframe. Imputing 0.")
+            print(f"[WARNING] Column '{col}' missing from dataframe. Imputing 0. This may indicate an ETL issue.")
             df[col] = 0
 
     # ... inside calculate_offensive_score ...
@@ -112,7 +112,7 @@ def calculate_pitching_score(df):
     req_cols = ['IP', 'K_P', 'BB_P', 'ER']
     for col in req_cols:
         if col not in df.columns:
-            print(f"[Warning] Column '{col}' missing from dataframe. Imputing 0.")
+            print(f"[WARNING] Column '{col}' missing from dataframe. Imputing 0. This may indicate an ETL issue.")
             df[col] = 0
 
     

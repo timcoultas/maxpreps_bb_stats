@@ -239,7 +239,7 @@ def predict_2026_roster():
         teams = df_proj['Team'].unique()
         
         if not ELITE_TEAMS:
-            print(f"Notice: ELITE_TEAMS list empty. Using {int(DEFAULT_FLOOR_PERCENTILE*100)}th %ile backfill for all.")
+            print(f"Notice: ELITE_TEAMS list empty. Using {int(DEFAULT_PERCENTILE_LADDER[0]*100)}th %ile backfill for all.")
 
         for team in teams:
             team_roster = df_proj[df_proj['Team'] == team]
