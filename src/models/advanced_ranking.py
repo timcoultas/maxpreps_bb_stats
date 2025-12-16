@@ -45,7 +45,15 @@ def calculate_offensive_score(df):
         if col not in df.columns:
             print(f"[Warning] Column '{col}' missing from dataframe. Imputing 0.")
             df[col] = 0
-            
+
+    # ... inside calculate_offensive_score ...
+    
+    # [FIX] Fill NaNs with 0 to prevent propagation
+    cols_to_fix = ['2B', '3B', 'HR', 'HBP', 'SF'] 
+    for c in cols_to_fix:
+        if c in df.columns:
+            df[c] = df[c].fillna(0)
+
     # Calculate Total Bases (TB) using vectorized arithmetic
     # TB = 1B + (2 × 2B) + (3 × 3B) + (4 × HR)
     # SQL Equivalent: SELECT (H - 2B - 3B - HR) + (2*2B) + (3*3B) + (4*HR) AS TB
@@ -101,11 +109,17 @@ def calculate_pitching_score(df):
     
     # Schema validation - handle both batting K/BB and pitching K_P/BB_P column names
     # The projection file uses 'K' for batting strikeouts, but pitching K may be labeled differently
-    req_cols = ['IP', 'K', 'BB', 'ER']
+    req_cols = ['IP', 'K_P', 'BB_P', 'ER']
     for col in req_cols:
         if col not in df.columns:
             print(f"[Warning] Column '{col}' missing from dataframe. Imputing 0.")
             df[col] = 0
+
+    
+    cols_to_fix = ['IP', 'K_P', 'BB_P', 'ER'] 
+    for c in cols_to_fix:
+        if c in df.columns:
+            df[c] = df[c].fillna(0)
 
     # Convert IP to true decimal for math
     # Note: We keep raw 'IP' for display, but use 'IP_Math' for calculation
@@ -115,14 +129,21 @@ def calculate_pitching_score(df):
     # Positive weights reward: Innings (durability) and Strikeouts (dominance)
     # Negative weights penalize: Walks (lack of control) and Earned Runs (damage)
     score = (df['IP_Math'] * 1.5) + \
-            (df['K'] * 1.0) - \
-            (df['BB'] * 1.0) - \
+            (df['K_P'] * 1.0) - \
+            (df['BB_P'] * 1.0) - \
             (df['ER'] * 2.0)
     
     # NOTE: We intentionally allow negative scores. A pitcher with 2 IP, 0 K, 5 BB, 6 ER
     # should have a negative score (-9.0) to indicate they hurt the team.
     # Downstream code should handle this appropriately (e.g., floor at 0 for index calculations).
-            
+
+     # [FIX] Role Masking: Force score to 0 if not a Pitcher
+    # This prevents position players (who have 0 ER/BB) from getting 'neutral' scores that distort team averages
+    if 'Is_Pitcher' in df.columns:
+        score = np.where(df['Is_Pitcher'], score, 0.0)
+        # Convert back to Series because np.where returns an array
+        score = pd.Series(score, index=df.index)
+
     return score.fillna(0)
 
 
