@@ -226,7 +226,7 @@ def create_generic_profiles():
     
     # Display summary for verification
     print("\n--- Generated Profiles Summary ---")
-    print(df_profiles[['Name', 'PA', 'H', 'AB', 'IP', 'ERA']].to_string(index=False))
+    print(df_profiles[['Name', 'PA', 'AB', 'H', 'K', 'BB',  'IP', 'ERA', 'K_P', 'BB_P']].to_string(index=False))
 
 if __name__ == "__main__":
     create_generic_profiles()
