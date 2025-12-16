@@ -4,6 +4,10 @@ import argparse
 import pandas as pd
 from bs4 import BeautifulSoup
 import sys
+import warnings
+
+# Suppress FutureWarning from pandas groupby operations
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # --- ETL IMPORTS ---
 from src.etl.metadata import extract_metadata
@@ -132,7 +136,10 @@ def main():
     base_raw = PATHS['raw']
     
     if 'all' in args.teams:
-        final_team_list = [d for d in os.listdir(base_raw) if os.path.isdir(os.path.join(base_raw, d))]
+        # [FIX] Filter out hidden folders or templates (starting with _)
+        final_team_list = [d for d in os.listdir(base_raw) 
+                           if os.path.isdir(os.path.join(base_raw, d)) 
+                           and not d.startswith('_') and not d.startswith('.')]
     else:
         final_team_list = args.teams
 
