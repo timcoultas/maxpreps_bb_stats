@@ -80,19 +80,19 @@ def simulate_games(simulations_per_game=1000):
     team_stats = pd.DataFrame(df_roster['Team'].unique(), columns=['Team'])
     
     # --- Offensive Aggregation ---
-    # Sum top 9 batters (starting lineup) per team
-    # SQL: SELECT Team, SUM(RC_Score) FROM (SELECT TOP 9 ... ORDER BY RC_Score DESC) GROUP BY Team
+    # Sum top 10 batters (starting lineup + 1ub) per team
+    # SQL: SELECT Team, SUM(RC_Score) FROM (SELECT TOP 10 ... ORDER BY RC_Score DESC) GROUP BY Team
     offense_scores = []
     for team in team_stats['Team']:
-        top_9 = df_batters[df_batters['Team'] == team].nlargest(9, 'RC_Score')
-        offense_scores.append({'Team': team, 'Offense_Raw': top_9['RC_Score'].sum()})
+        batsmen = df_batters[df_batters['Team'] == team].nlargest(10, 'RC_Score')
+        offense_scores.append({'Team': team, 'Offense_Raw': batsmen['RC_Score'].sum()})
     
     # --- Pitching Aggregation ---
-    # Sum top 5 pitchers (rotation + closer) per team
+    # Sum top 6 pitchers per team
     pitching_scores = []
     for team in team_stats['Team']:
-        top_staff = df_pitchers[df_pitchers['Team'] == team].nlargest(5, 'Pitching_Score')
-        pitching_scores.append({'Team': team, 'Pitching_Raw': top_staff['Pitching_Score'].sum()})
+        pitchers = df_pitchers[df_pitchers['Team'] == team].nlargest(6, 'Pitching_Score')
+        pitching_scores.append({'Team': team, 'Pitching_Raw': pitchers['Pitching_Score'].sum()})
         
     # Join offense and pitching into team strength fact table
     df_strength = pd.merge(pd.DataFrame(offense_scores), pd.DataFrame(pitching_scores), on='Team')
