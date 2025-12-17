@@ -202,7 +202,7 @@ def predict_2026_roster():
         proj['Season'] = 'Projected-Next'
         proj['Season_Cleaned'] = player['Season_Year'] + 1
         proj['Class_Cleaned'] = next_class
-        proj['Varsity_Year'] = next_tenure
+        proj['Varsity_Year'] = curr_tenure
         proj['Projection_Method'] = method
         
         # Apply Multipliers
