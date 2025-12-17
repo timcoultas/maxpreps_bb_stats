@@ -59,6 +59,41 @@ def analyze_team_power_rankings():
     print(f"Loading roster projections from {input_path}...")
     df = pd.read_csv(input_path)
     
+    # --- 0. Roster Composition Metrics ---
+    # These metrics tell you about team maturity and experience depth
+    # A team with 15 returning players and 40 collective varsity years is battle-tested
+    # A team with 8 returning players and 12 varsity years is rebuilding
+    
+    # Identify "real" returning players vs generic backfill
+    # SQL: WHERE Projection_Method NOT LIKE '%Generic%' AND Projection_Method NOT LIKE '%Backfill%'
+    df['Is_Returning'] = ~df['Projection_Method'].str.contains('Generic|Backfill', case=False, na=False)
+    
+    # Calculate roster composition per team
+    # SQL: SELECT Team, 
+    #        COUNT(*) as Total_Roster,
+    #        SUM(CASE WHEN Is_Returning THEN 1 ELSE 0 END) as Returning_Players,
+    #        SUM(CASE WHEN Is_Returning AND Class_Cleaned = 'Senior' THEN 1 ELSE 0 END) as Returning_Seniors,
+    #        SUM(CASE WHEN Is_Returning THEN Varsity_Year ELSE 0 END) as Total_Varsity_Years
+    #      FROM Roster GROUP BY Team
+    
+    roster_comp = []
+    for team in df['Team'].unique():
+        team_df = df[df['Team'] == team]
+        returning = team_df[team_df['Is_Returning']]
+        
+        roster_comp.append({
+            'Team': team,
+            'Total_Roster': len(team_df),
+            'Returning_Players': len(returning),
+            'Returning_Seniors': len(returning[returning['Class_Cleaned'] == 'Senior']),
+            'Returning_Juniors': len(returning[returning['Class_Cleaned'] == 'Junior']),
+            'Returning_Sophs': len(returning[returning['Class_Cleaned'] == 'Sophomore']),
+            'Total_Varsity_Years': int(returning['Varsity_Year'].sum()),
+            'Avg_Varsity_Years': round(returning['Varsity_Year'].mean(), 2) if len(returning) > 0 else 0
+        })
+    
+    df_roster_comp = pd.DataFrame(roster_comp)
+    
     # --- 1. Offensive Power Rankings (Top 9 Batters) ---
     # Filter for players with meaningful offensive contribution
     # SQL Equivalent: SELECT * FROM Roster WHERE RC_Score > 0.1
@@ -127,14 +162,16 @@ def analyze_team_power_rankings():
     pitching_stats = pitching_stats.sort_values('Pitching_dominance', ascending=False)
     
     # --- 3. Combined "Power Index" ---
-    # Merging the two aggregated views into a single "Fact Table" for the team.
+    # Merging the aggregated views into a single "Fact Table" for the team.
     # SQL Equivalent: 
     #   SELECT * FROM Offense_Stats 
-    #   FULL OUTER JOIN Pitching_Stats ON Offense_Stats.Team = Pitching_Stats.Team
-    team_rankings = pd.merge(offense_stats, pitching_stats, on='Team', how='outer').fillna(0)
+    #   JOIN Pitching_Stats ON Offense_Stats.Team = Pitching_Stats.Team
+    #   JOIN Roster_Comp ON Offense_Stats.Team = Roster_Comp.Team
+    team_rankings = pd.merge(offense_stats, pitching_stats, on='Team', how='outer')
+    team_rankings = pd.merge(team_rankings, df_roster_comp, on='Team', how='left')
+    team_rankings = team_rankings.fillna(0)
     
     # Normalization: Finding the "League Leader" to set the curve.
-    # This establishes the denominator for our index calculation.
     max_offense = team_rankings['Projected_Runs'].max()
     max_pitching = team_rankings['Pitching_dominance'].max()
     
@@ -143,8 +180,6 @@ def analyze_team_power_rankings():
     max_pitching = 1 if max_pitching == 0 else max_pitching
 
     # Calculating the Index (0-100 Scale).
-    # Statistically: (Team_Score / Max_Score) * 100.
-    # 100 = Best in League. 50 = Half as good as the best team.
     team_rankings['Offense_Index'] = (team_rankings['Projected_Runs'] / max_offense * 100).round(1)
     team_rankings['Pitching_Index'] = (team_rankings['Pitching_dominance'] / max_pitching * 100).round(1)
     
@@ -152,24 +187,20 @@ def analyze_team_power_rankings():
     team_rankings['Total_Power_Index'] = ((team_rankings['Offense_Index'] + team_rankings['Pitching_Index']) / 2).round(1)
     
     # Final Sorting for display
-    # SQL Equivalent: ORDER BY Total_Power_Index DESC
     team_rankings = team_rankings.sort_values('Total_Power_Index', ascending=False).reset_index(drop=True)
     
     # --- 4. Display & Save ---
     print(f"\n=== 2026 PROJECTED TEAM POWER RANKINGS ===")
     print(f"(Aggregation: Top {TOP_N_BATTERS} Batters, Top {TOP_N_PITCHERS} Pitchers)\n")
     
-    header = f"{'Rank':<5} {'Team':<35} {'Total':<8} {'Off.':<8} {'Pit.':<8} {'Top Hitter':<18} {'Ace':<18}"
+    header = f"{'Rank':<5} {'Team':<35} {'Power':<7} {'Off.':<6} {'Pit.':<6} {'Ret.':<5} {'Sr.':<4} {'Exp.':<5}"
     print(header)
     print("-" * len(header))
     
     for idx, row in team_rankings.iterrows():
-        # Truncating names to fit the ASCII table width
         team_display = str(row['Team'])[:33]
-        hitter_display = str(row['Top_Hitter'])[:16]
-        ace_display = str(row['Ace_Pitcher'])[:16]
         
-        print(f"{idx+1:<5} {team_display:<35} {row['Total_Power_Index']:<8} {row['Offense_Index']:<8} {row['Pitching_Index']:<8} {hitter_display:<18} {ace_display:<18}")
+        print(f"{idx+1:<5} {team_display:<35} {row['Total_Power_Index']:<7} {row['Offense_Index']:<6} {row['Pitching_Index']:<6} {int(row['Returning_Players']):<5} {int(row['Returning_Seniors']):<4} {int(row['Total_Varsity_Years']):<5}")
 
     # --- 5. Summary Statistics ---
     print(f"\n--- League Summary ---")
@@ -178,15 +209,25 @@ def analyze_team_power_rankings():
     print(f"Avg Pitching Index: {team_rankings['Pitching_Index'].mean():.1f}")
     print(f"Avg Total Power: {team_rankings['Total_Power_Index'].mean():.1f}")
     
-    # Identify tiers
-    elite_threshold = team_rankings['Total_Power_Index'].quantile(0.75)
-    weak_threshold = team_rankings['Total_Power_Index'].quantile(0.25)
+    print(f"\n--- Roster Composition ---")
+    print(f"Avg Returning Players: {team_rankings['Returning_Players'].mean():.1f}")
+    print(f"Avg Returning Seniors: {team_rankings['Returning_Seniors'].mean():.1f}")
+    print(f"Avg Collective Varsity Years: {team_rankings['Total_Varsity_Years'].mean():.1f}")
     
-    elite_teams = team_rankings[team_rankings['Total_Power_Index'] >= elite_threshold]
-    weak_teams = team_rankings[team_rankings['Total_Power_Index'] <= weak_threshold]
+    # Identify experience tiers
+    exp_75 = team_rankings['Total_Varsity_Years'].quantile(0.75)
+    exp_25 = team_rankings['Total_Varsity_Years'].quantile(0.25)
     
-    print(f"\nElite Tier (75th+ %ile, Power >= {elite_threshold:.1f}): {len(elite_teams)} teams")
-    print(f"Rebuild Tier (25th- %ile, Power <= {weak_threshold:.1f}): {len(weak_teams)} teams")
+    veteran_teams = team_rankings[team_rankings['Total_Varsity_Years'] >= exp_75]
+    young_teams = team_rankings[team_rankings['Total_Varsity_Years'] <= exp_25]
+    
+    print(f"\nVeteran Teams (75th+ %ile, {int(exp_75)}+ varsity years): {len(veteran_teams)}")
+    for _, t in veteran_teams.head(5).iterrows():
+        print(f"  - {t['Team'][:30]}: {int(t['Total_Varsity_Years'])} yrs ({int(t['Returning_Seniors'])} seniors)")
+    
+    print(f"\nYoung/Rebuilding Teams (25th- %ile, {int(exp_25)} or fewer varsity years): {len(young_teams)}")
+    for _, t in young_teams.head(5).iterrows():
+        print(f"  - {t['Team'][:30]}: {int(t['Total_Varsity_Years'])} yrs ({int(t['Returning_Players'])} returning)")
 
     # --- 6. Save Output ---
     output_dir = PATHS['out_team_strength']
@@ -196,6 +237,8 @@ def analyze_team_power_rankings():
     output_cols = ['Team', 'Total_Power_Index', 'Offense_Index', 'Pitching_Index', 
                    'Projected_Runs', 'Pitching_dominance', 
                    'Batters_Count', 'Pitchers_Count',
+                   'Returning_Players', 'Returning_Seniors', 'Returning_Juniors', 'Returning_Sophs',
+                   'Total_Varsity_Years', 'Avg_Varsity_Years',
                    'Top_Hitter', 'Top_Hitter_RC', 'Ace_Pitcher', 'Ace_Score']
     
     # Writing the Materialized View to disk
