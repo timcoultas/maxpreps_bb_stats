@@ -14,7 +14,7 @@ The system was designed for Colorado 5A baseball, specifically to project Rocky 
 
 ### How This Project Developed
 
-
+As the 2026 RMHS season was approaching, I was starting to wonder how good this team really would be and if there was a way that I could get some addional information for when I am running GameChanger broadcasts. There had to be a fast way to get that kind of information with AI agents, right? I also work in data (healthtech) and wind up working a lot with AI tools. 
 
 ---
 
