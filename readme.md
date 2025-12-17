@@ -12,14 +12,15 @@ The system was designed for Colorado 5A baseball, specifically to project Rocky 
 
 **What this is not:** A crystal ball. Baseball is chaotic. A 70% win probability means you lose 3 out of 10 times. The value here is in setting realistic expectations and identifying where your team's strengths and weaknesses lie before the first pitch of spring.
 
+### How This Project Developed
+
+
+
 ---
 
 ## Outputs
 
 Process produces four **key** deliverables:
-
-### Projected Rosters 
-Complete roster projections for every team in the dataset. Each returning player has their stats projected forward using development multipliers. Batting and Pitching rankings are developed for each player. Roster gaps are filled with tiered generic players. 
 
 ### Team Power Rankings
 Every team is given a Overall Power score and ranked. The Overall Power score is based on a combination of the team's Offensive and Pitching Power scores, which are based on projected player performance. The Team Power Rankings also tell you the number of returning team members, returning seniors, and years of varsity experience on the team. 
@@ -40,9 +41,11 @@ Ceiling (90th %): 18 Wins
 Floor (10th %):   10 Wins
 ```
 
+### Projected Rosters 
+Complete roster projections for every team in the dataset. Each returning player has their stats projected forward using development multipliers. Batting and Pitching rankings are developed for each player. Roster gaps are filled with tiered generic players. 
+
 ### Historical Player Statistics
 Four years of player season statistics across 37 (and counting) Colorado 5A teams. This information contains player level season data sourced from MaxPreps and aggregates it into one file. 
-
 
 ---
 
