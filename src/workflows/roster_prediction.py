@@ -31,7 +31,7 @@ except ImportError:
 # 20th percentile sophomores have median 0 hits (RC_Score = 0), representing
 # cameo appearances. 30th percentile provides meaningful offensive contribution.
 DEFAULT_PERCENTILE_LADDER = [ 0.2, 0.1]
-ELITE_PERCENTILE_LADDER = [0.3, 0.2, 0.1]
+ELITE_PERCENTILE_LADDER = [0.4, 0.2, 0.1]
 
 # Roster minimums for backfill logic
 MIN_BATTERS = 10
