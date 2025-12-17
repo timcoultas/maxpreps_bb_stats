@@ -11,8 +11,8 @@ except ImportError:
 
 # --- Configuration Constants ---
 # Standardized with game_simulator.py for consistent aggregation
-TOP_N_BATTERS = 9       # Starting lineup
-TOP_N_PITCHERS = 5      # Rotation (4) + Closer (1)
+TOP_N_BATTERS = 10       # Starting lineup + sub
+TOP_N_PITCHERS = 6      # Two starters, one starter/middle, two middle, one closer
 MIN_RC_SCORE = 0.1      # Minimum RC to be considered a viable batter
 MIN_PITCHING_SCORE = 0.1  # Minimum pitching score to be considered viable
 
