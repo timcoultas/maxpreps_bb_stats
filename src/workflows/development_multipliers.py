@@ -22,7 +22,7 @@ def generate_stat_multipliers():
     """
     
     # --- Load Data ---
-    input_file = os.path.join(PATHS['processed'], 'history', 'aggregated_stats.csv')
+    input_file = os.path.join(PATHS['out_historical_stats'],'aggregated_stats.csv')
     if not os.path.exists(input_file):
         print(f"Error: {input_file} not found.")
         return

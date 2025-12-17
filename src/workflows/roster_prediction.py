@@ -83,7 +83,7 @@ def predict_2026_roster():
     """
     
     # --- 1. Load Data ---
-    stats_path = os.path.join(PATHS['processed'], 'history', 'aggregated_stats.csv')
+    stats_path = os.path.join(PATHS['out_historical_stats'],'aggregated_stats.csv')
     multipliers_path = os.path.join(PATHS['out_development_multipliers'], 'development_multipliers.csv')
     generic_path = os.path.join(PATHS['out_generic_players'], 'generic_players.csv')
 

@@ -62,6 +62,10 @@ def save_dataframe(data_list, output_folder, file_name):
     
     final_cols = fixed_cols + [c for c in schema_cols if c in df.columns]
     df = df.reindex(columns=final_cols)
+
+    # Sort before saving
+    if all(col in df.columns for col in ['Team', 'Name', 'Season_Cleaned']):
+        df = df.sort_values(by=['Team', 'Name', 'Season_Cleaned'])
     
     os.makedirs(output_folder, exist_ok=True)
     out_path = os.path.join(output_folder, file_name)
@@ -184,11 +188,7 @@ def main():
         final_cols = fixed_cols + [c for c in schema_cols if c in df_consolidated.columns]
         df_consolidated = df_consolidated.reindex(columns=final_cols)
 
-        # Removed sorting logic that caused volatility issues
-        # if all(col in df_consolidated.columns for col in ['Team', 'Name', 'Season_Cleaned']):
-        #      df_consolidated = df_consolidated.sort_values(by=['Team', 'Name', 'Season_Cleaned'])
-
-        consolidated_dir = os.path.join(PATHS['processed'], args.period)
+        consolidated_dir = PATHS['out_historical_stats']
         save_dataframe(df_consolidated.to_dict('records'), consolidated_dir, "aggregated_stats.csv")
         
         # --- PHASE 2: ANALYTICS CHAIN ---

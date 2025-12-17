@@ -41,7 +41,8 @@ PATHS = {
     "out_team_strength": os.path.join(OUTPUT_DIR, "team_strength"), 
     "out_development_multipliers": os.path.join(OUTPUT_DIR, "development_multipliers"), 
     "out_generic_players": os.path.join(OUTPUT_DIR, "generic_players"), 
-    "out_roster_prediction": os.path.join(OUTPUT_DIR, "roster_prediction")
+    "out_roster_prediction": os.path.join(OUTPUT_DIR, "roster_prediction"),
+    "out_historical_stats": os.path.join(OUTPUT_DIR, "historical_stats")
 }
 
 # --- 2. Statistics Configuration
