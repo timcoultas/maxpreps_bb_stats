@@ -34,7 +34,7 @@ DEFAULT_PERCENTILE_LADDER = [ 0.2, 0.1]
 ELITE_PERCENTILE_LADDER = [0.3, 0.2, 0.1]
 
 # Roster minimums for backfill logic
-MIN_BATTERS = 9
+MIN_BATTERS = 10
 MIN_PITCHERS = 6
 
 # FIX: Add adjustment for survivor bias
