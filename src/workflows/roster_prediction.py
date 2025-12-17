@@ -27,11 +27,18 @@ except ImportError:
 
 
 # --- Configuration Constants ---
-# FIX: Changed default floor from 0.2 to 0.3 based on adversarial review.
-# 20th percentile sophomores have median 0 hits (RC_Score = 0), representing
-# cameo appearances. 30th percentile provides meaningful offensive contribution.
-DEFAULT_PERCENTILE_LADDER = [ 0.2, 0.1]
-ELITE_PERCENTILE_LADDER = [0.4, 0.2, 0.1]
+# This tells the script how to pick generic players. 
+# There are "elite" programs like Cherry Creek and Rocky Mountain
+# These are teams that made it into the top 10 rankings 
+# More than once in the last 4 years. (there are 13) 
+# Only 3 made it in more than twice. 
+# The ladder says: for your first generic player you get a sophomore that operates at the percentile; 
+#  You next player is at the next percentile. 
+# So rocky gets their first at median, their second at 20th percentile their third at 10th percentile 
+# The non elite teams start at 30percentile and then drop to 10
+
+DEFAULT_PERCENTILE_LADDER = [ 0.3, 0.1]
+ELITE_PERCENTILE_LADDER = [0.5, 0.2, 0.1]
 
 # Roster minimums for backfill logic
 MIN_BATTERS = 10
