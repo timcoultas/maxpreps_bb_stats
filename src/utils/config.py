@@ -99,19 +99,20 @@ STAT_SCHEMA = [
 ELITE_TEAMS = [
     #"Arvada West (Arvada, CO)",  # only 1 time top 10 since 2022
     "Broomfield (CO)", # 2 times top 10 since 2022
-    "Chaparral (Parker, CO)", # 2 times top 10 since 2022
-    "Castle View (Castle Rock, CO)", # 2 times top 10 since 2022
+    # "Chaparral (Parker, CO)", # 2 times top 10 since 2022
+    # "Castle View (Castle Rock, CO)", # 2 times top 10 since 2022
     "Cherry Creek (Greenwood Village, CO)", # 3 times top 10 since 2022
-    "Douglas County (Castle Rock, CO)",
-    "Fossil Ridge (Fort Collins, CO)", # 2 times top 10 since 2022
-    "Fruita Monument (Fruita, CO)", # 2 times top 10 since 2022
+    # "Douglas County (Castle Rock, CO)",
+    # "Fossil Ridge (Fort Collins, CO)", # 2 times top 10 since 2022
+    # "Fruita Monument (Fruita, CO)", # 2 times top 10 since 2022
     #"Grandview (Aurora, CO)",# only 1 time top 10 since 2022
-    "Legend (Parker, CO)", # 2 times top 10 since 2022
-    "Legacy (Broomfield, CO)", # 2 times top 10 since 2022
-    #"Mountain Vista (Highlands Ranch, CO)",# only 1 time top 10 since 2022
-    "Pine Creek (Colorado Springs, CO)", # 2 times top 10 since 2022
+    # "Legend (Parker, CO)", # 2 times top 10 since 2022
+    # "Legacy (Broomfield, CO)", # 2 times top 10 since 2022
+    "Mountain Vista (Highlands Ranch, CO)",# only 1 time top 10 since 2022
+    "Cherokee Trail (Aurora, CO)",
+    # "Pine Creek (Colorado Springs, CO)", # 2 times top 10 since 2022
     "Regis Jesuit (Aurora, CO)", # 4 times top 10 since 2022
-    "Rock Canyon (Highlands Ranch, CO)", # 2 times top 10 since 2022
+    # "Rock Canyon (Highlands Ranch, CO)", # 2 times top 10 since 2022
     "Rocky Mountain (Fort Collins, CO)" # 3 times top 10 since 2022
     # not yet included: Prairie View (not on schedule); Valor Christian (poor max preps data)
 ]
