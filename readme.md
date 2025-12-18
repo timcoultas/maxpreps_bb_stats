@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This project answers a simple question every coach, player, and fan asks in the offseason: **_"What's going to happen next year?"_**
+This project tries to answer a simple question every coach, player, and fan asks in the offseason: **_"What's going to happen next year?"_**
 
 We built a complete projection pipeline that takes historical player statistics from MaxPreps (2022-2025), applies development curves to returning players, fills roster gaps with realistic replacement-level talent, simulates an entire season's worth of games, and produces power rankings for 37 (and growing) Colorado 5A teams.
 
