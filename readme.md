@@ -57,6 +57,8 @@ Complete roster projections for every team in the dataset. Each returning player
 ### Historical Player Statistics
 Four years of player season statistics across 37 (and counting) Colorado 5A teams. This information contains player level season data sourced from MaxPreps and aggregates it into one file. 
 
+The following link provides a comprehensive [**data dictionary**](/docs/data_dictionary.md) with explanations of all output tables and suggestions on how to use them. 
+
 ---
 
 ## Methodology
@@ -98,11 +100,43 @@ The multiplier hierarchy prioritizes:
 
 This ordering follows guidance from Tango, Lichtman, and Dolphin (*The Book*, 2006) on aging curve methodology.
 
+We also found that [**Elite programs**](/docs/co_5a_championship_results.md) had different development curves than other programs and applied different curves. These can be seen in  the Development Mulitpliers output. Examples: 
+
+```
+================================================================================
+KEY FINDINGS SUMMARY (Dynamically Generated)
+================================================================================
+
+1. JUNIOR → SENIOR PITCHING (N: 108 elite, 501 standard)
+   - Strikeouts: Elite 1.450 vs Standard 0.975 (Elite gains 48% more strikeouts)
+   - Earned Runs: Elite 0.750 vs Standard 0.899 (Elite reduces runs 15% more)
+   - Walks: Elite 0.800 vs Standard 0.944 (Elite cuts walks 14% more)
+
+2. SOPHOMORE → JUNIOR PITCHING (N: 59 elite, 299 standard)
+   - Innings Pitched: Elite 1.143 vs Standard 1.362 (Standard grows 22% more)
+   - Strikeouts: Elite 1.273 vs Standard 1.474 (Standard grows 20% more)
+
+3. BATTING DEVELOPMENT
+   - Soph→Jr: Hits (1.348 vs 1.485, Elite -14%), OPS (1.026 vs 1.125, Elite -10%)
+   - Jr→Sr: Hits (1.231 vs 1.174, similar), OPS (1.086 vs 1.067, similar)
+
+4. SAMPLE SIZES
+   - Elite program transitions: 185
+   - Standard program transitions: 957
+   - Total transitions analyzed: 1142
+   - Minimum N = 14 (marginally robust, interpret with caution)
+
+5. RECOMMENDATION
+   - Elite programs show meaningful pitching development advantages
+   - USE elite_development_multipliers.csv for: Broomfield, Cherry Creek, Mountain Vista, Cherokee Trail, Regis Jesuit, Rocky Mountain
+   - USE standard_development_multipliers.csv for all other teams
+```
+
 **Survivor Bias Adjustment:** All projected statistics are reduced by 5% to account for survivor bias in the historical multipliers. Development curves are calculated only from players who returned the following year, which excludes players who quit or were cut. This creates an upward bias that the 5% reduction partially corrects.
 
 **Replacement Level — Generic Players**
 
-Roster backfill uses percentile-based profiles rather than mean imputation. This preserves population variance and aligns with the "Replacement Level" concept in WAR calculations—roughly the 20th-30th percentile of available talent. Elite programs (based on historical state and regional championship performance) receive different quality players that non-elite teams. The percentiles below are the percentile performance of an historical sophomore across all 37 teams. 
+Roster backfill uses percentile-based profiles rather than mean imputation. This preserves population variance and aligns with the "Replacement Level" concept in WAR calculations—roughly the 20th-30th percentile of available talent. [**Elite programs**](/docs/co_5a_championship_results.md) (based on historical state and regional championship performance) receive different quality players that non-elite teams. The percentiles below are the percentile performance of an historical sophomore across all 37 teams. 
 
 * Elite teams: First generic at 50th percentile, second at 20th percentile, third at 10th percentile, additional at 10th 
 * Standard teams: First generic at 30th percentile, second at 10th percentile, additional at 10th 
@@ -315,28 +349,17 @@ However, because of the way that the MaxPreps website is structured, these stati
 In order to obtain this information, I've followed the following steps. 
 
 From the main baseball page of the school, (eg: https://www.maxpreps.com/co/fort-collins/rocky-mountain-lobos/baseball/)
-
-Navigate to the appropriate season. 
-
-Click "Stats" in the upper navigation bar. 
-
-Click "Player Stats" in the lower navigation bar. 
-
-Scroll down past the second "Batting" table. 
-
-Right-Click "Print" and select open in seprate tab or new window.
-
-The page will open and subsequently a print diaglog box will open. Close the print dialog box by selecting "Cancel." 
-
-On the new stats page that is now open, select "Save As" from the page menu.
-
-Save as "Webpage, HTML Only" (this is in Google Chrome) as opposed to "Complete Page". 
-
-Saved that file, named something like "rocky_22" in the target directory. 
-
-This is the file the ETL ingestion process will read. 
-
-Repeat for as many teams and years as you want. 
+* Navigate to the appropriate season. 
+* Click "Stats" in the upper navigation bar. 
+* Click "Player Stats" in the lower navigation bar. 
+* Scroll down past the second "Batting" table. 
+* Right-Click "Print" and select open in seprate tab or new window.
+* The page will open and subsequently a print diaglog box will open. Close the print dialog box by selecting "Cancel." 
+* On the new stats page that is now open, select "Save As" from the page menu.
+* Save as "Webpage, HTML Only" (this is in Google Chrome) as opposed to "Complete Page". 
+* Saved that file, named something like "rocky_22" in the target directory. 
+* This is the file the ETL ingestion process will read. 
+* Repeat for as many teams and years as you want. 
 
 ---
 
