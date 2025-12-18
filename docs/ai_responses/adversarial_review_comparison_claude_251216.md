@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Adversarial Review Comparison: Claude vs Gemini - Claude (Dec 16) 
+title: Adversarial Review Comparison - Claude vs Gemini - Claude (Dec 16) 
 parent: AI Critiques & Reports
 ---
 # Adversarial Review Comparison: Claude vs Gemini
