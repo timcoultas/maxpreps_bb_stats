@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Adversarial Review Report: CO High School Baseball Projection System - Gemini (Dec 16) # (Customize the title for each file)
+title: Adversarial Review Report: CO High School Baseball Projection System - Gemini (Dec 16)
 parent: AI Critiques & Reports
 ---
-Adversarial Review Report: CO High School Baseball Projection System
+# Adversarial Review Report: CO High School Baseball Projection System
 
 Date: December 16, 2025
 Reviewer: AI Agent (Gemini)

@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Comprehensive Remediation Plan - Gemini (Dec 16) # (Customize the title for each file)
+title: Comprehensive Remediation Plan - Gemini (Dec 16) 
 parent: AI Critiques & Reports
 ---
-Comprehensive Remediation Plan: CO High School Baseball Projection System
+# Comprehensive Remediation Plan: CO High School Baseball Projection System
 
 Date: December 16, 2025
 Based On: Adversarial Reviews (Claude & Gemini)

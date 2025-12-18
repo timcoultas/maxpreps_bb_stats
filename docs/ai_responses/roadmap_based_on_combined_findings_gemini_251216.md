@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Gemini Review (Dec 16) # (Customize the title for each file)
+title: Gemini Review (Dec 16) 
 parent: AI Critiques & Reports
 ---
-Comprehensive Remediation Plan: CO High School Baseball Projection System
+# Comprehensive Remediation Plan: CO High School Baseball Projection System
 
 Reference Documents:
 

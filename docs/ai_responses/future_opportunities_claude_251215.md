@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Future Improvement Opportunities - Claude (Dec 15) # (Customize the title for each file)
+title: Future Improvement Opportunities - Claude (Dec 15) 
 parent: AI Critiques & Reports
 ---
 # Future Improvement Opportunities

@@ -1,6 +1,6 @@
 ---
 layout: default 
-title: Comprehensive Remediation Plan (Dec 16) # (Customize the title for each file)
+title: Comprehensive Remediation Plan (Dec 16) 
 parent: AI Critiques & Reports
 ---
 # Comprehensive Remediation Plan: CO High School Baseball Projection System
