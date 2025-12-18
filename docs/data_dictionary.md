@@ -4,7 +4,7 @@
 
 ### Team Power Rankings
 
-**Purpose:** Team-level power rankings aggregating individual player performance into composite indices. This shows the relative strenght of teams as well as provides information about returning players and experience level. 
+**Purpose:** Team-level power rankings aggregating individual player performance into composite indices. This shows the relative strength of teams as well as provides information about returning players and experience level. The highest ranked team in Offense or Pitching is always given a 100, interpret numbers less than 100 as the percent offense / pitching of the highest ranked team. 
 
 **Location:** `data/output/team_strength/team_strength_rankings.csv`
 
