@@ -54,7 +54,7 @@ These numbers help distinguish between a veteran-loaded squad expecting a deep p
 **Note:** Unfortunately, I had to exclude Valor Christian. Their data in MaxPreps is fatally flawed and I would not be able to integrate it without a lot of manual work. 
 
 ### Regular Season Simulation
-For each game on the schedule, we ask: "If these two teams played 1,000 times, how often would each team win?" That's the core idea behind Monte Carlo simulation — instead of trying to calculate a precise answer, we let the computer play out the game over and over with randomized scoring (using that "clumpy innings" model described above) and see what happens.
+For each game on the schedule, we ask: "If these two teams played 1,000 times, how often would each team win?" That's the core idea behind Monte Carlo simulation — instead of trying to calculate a precise answer, we let the computer play out the game over and over with randomized scoring (using that "clumpy innings" model described below) and see what happens.
 After 1,000 simulated games, we can say things like "Rocky Mountain wins 623 of them" — which becomes a 62.3% win probability. We also track the average score across all simulations to give you a projected final like "6.2-5.1."
 To make this actionable, we translate win probabilities into confidence labels:
 
@@ -66,10 +66,24 @@ We also simulate the entire season 1,000 times to generate floor and ceiling win
 Note: This approach uses team-level Power Rankings to set each team's offensive and pitching strength. It doesn't model individual pitcher matchups or in-game strategy — think of it as "what happens when Team A's overall roster faces Team B's overall roster" rather than "what happens when their ace faces our cleanup hitter."
 
 ### Projected Rosters 
-Complete roster projections for every team in the dataset. Each returning player has their stats projected forward using development multipliers. Batting and Pitching rankings are developed for each player. Roster gaps are filled with tiered generic players. 
+
+For every team in the dataset, we build a complete 2026 roster by asking: "Who's coming back, and how much better will they be?"
+
+_Returning Players_: Any non-senior from 2025 gets carried forward with projected stats. We apply development multipliers based on historical patterns — for example, if the typical junior-to-senior sees a 20% increase in strikeouts, we apply that to each returning junior pitcher. Elite programs (Cherry Creek, Rocky Mountain, etc.) get their own multipliers since their year-round development produces different growth curves than standard programs.
+
+_Player Rankings_: Each player is ranked both within their team and across the entire league for batting (using Runs Created) and pitching (using Pitching Dominance Score). This lets you quickly spot who the #1 hitter is on each team and how they stack up against the rest of the league.
+
+_Filling the Gaps_: Seniors graduate. Some kids quit. Rosters need bodies. When a team doesn't have enough projected players to field a full squad, we fill the empty spots with "generic" players — statistical profiles based on what a typical JV call-up (sophomore) looks like. Elite programs get better generic players (50th percentile) than standard programs (30th percentile), reflecting the deeper talent pools at powerhouse schools.
+
+The result: a realistic roster for every team, not just the ones with perfect data.
 
 ### Historical Player Statistics
-Four years of player season statistics across 37 (and counting) Colorado 5A teams. This information contains player level season data sourced from MaxPreps and aggregates it into one file. 
+
+The foundation of everything else — four years (2022-2025) of player statistics across 37 Colorado 5A teams, all pulled from MaxPreps and combined into a single file.
+
+This is the raw material that makes projections possible. Every batting average, every ERA, every player's class year — scraped from MaxPreps' print-friendly stat pages and cleaned up for analysis. When we calculate development multipliers ("how much do sophomores typically improve as juniors?"), this is the dataset we're learning from. When we build generic player profiles, we're pulling from real sophomores in this history.
+
+The dataset keeps growing as more teams are added. The more history we have, the more reliable the multipliers become — especially for rarer transitions like freshman-to-sophomore, where sample sizes matter.
 
 There is a link in the documentation to a Data Dictionary that explains the outputs of all of the models in detail and what each column means. 
 
