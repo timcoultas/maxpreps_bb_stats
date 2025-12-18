@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Adversarial Review Methodology  # (Change title for documentation_prompt.md)
+title: Documentation Prompt  # (Change title for documentation_prompt.md)
 parent: AI Prompts
 ---
 
