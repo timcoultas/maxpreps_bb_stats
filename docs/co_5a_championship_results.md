@@ -6,6 +6,8 @@ This data was surprisingly difficult to get. There may be some inaccuracies in i
 
 The table uses a points system where a Regional Chapmionship results in 1 point and a State Championship results in 4 points. Each team is then ranked by the sum of those points. The top 5 teams are defined as **elite** for purposes of the player development algorithm. (Elite teams are listed in bold below.)
 
+**Note:** The Valor Christian MaxPreps data is fatally flawed or I would have included them in "elite". 
+
 
 | Team            |   Regional Championships |   Regional C Points |   State Championships |   State C Points |   Total Points |
 |:----------------|-------------------------:|--------------------:|----------------------:|-----------------:|---------------:|
