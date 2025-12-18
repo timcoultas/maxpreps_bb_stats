@@ -1,3 +1,9 @@
+---
+layout: default
+title: Data Dictionary
+nav_order: 2
+---
+
 # Data Dictionary
 
 ## Key Outputs

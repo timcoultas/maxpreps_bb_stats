@@ -1,0 +1,13 @@
+title: CO High School Baseball Stats Project
+description: Projecting performance in Colorado 5A Baseball.
+theme: just-the-docs
+url: https://timcoultas.github.io  # Replace with your actual GitHub username if different
+baseurl: /maxpreps_bb_stats      # This must match your repository name exactly
+
+# Sidebar Settings
+remote_theme: just-the-docs/just-the-docs
+search_enabled: true
+heading_anchors: true
+
+# Navigation
+back_to_top: true

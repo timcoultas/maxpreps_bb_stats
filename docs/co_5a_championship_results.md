@@ -1,3 +1,9 @@
+---
+layout: default
+title: Championship Results
+nav_order: 3
+---
+
 # CO 5A Baseball State and Regional Championship Results
 
 The table below shows a list of CO 5A baseball teams that have had state or regional championships since 2016, when RPI was implemented. 
