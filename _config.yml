@@ -1,13 +1,22 @@
-title: CO High School Baseball Stats Project
-description: Projecting performance in Colorado 5A Baseball.
-theme: just-the-docs
-url: https://timcoultas.github.io  # Replace with your actual GitHub username if different
-baseurl: /maxpreps_bb_stats      # This must match your repository name exactly
+title: MaxPreps BB Stats
+description: Documentation for the Colorado High School Baseball Projection System
 
-# Sidebar Settings
+# --- THEME SETTINGS ---
+# We use remote_theme so you don't need a Gemfile
 remote_theme: just-the-docs/just-the-docs
+
+# --- PLUGINS (REQUIRED) ---
+plugins:
+  - jekyll-remote-theme
+
+# --- SITE SETTINGS ---
+url: https://timcoultas.github.io
+baseurl: /maxpreps_bb_stats
+
+# --- NAVIGATION & UI ---
+back_to_top: true
 search_enabled: true
 heading_anchors: true
 
-# Navigation
-back_to_top: true
+# --- FOOTER ---
+footer_content: "Copyright &copy; 2025 Tim Coultas"
