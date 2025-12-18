@@ -1,3 +1,8 @@
+---
+layout: default
+title: Gemini Review (Dec 16) # (Customize the title for each file)
+parent: AI Critiques & Reports
+---
 Comprehensive Remediation Plan: CO High School Baseball Projection System
 
 Date: December 16, 2025

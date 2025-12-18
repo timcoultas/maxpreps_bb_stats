@@ -1,3 +1,8 @@
+---
+layout: default
+title: Gemini Review (Dec 16) # (Customize the title for each file)
+parent: AI Critiques & Reports
+---
 # Adversarial Review: Colorado High School Baseball Projection System
 
 **Reviewer Role:** Cynical Sabermetrician, Senior Data Engineer, Python Expert  
