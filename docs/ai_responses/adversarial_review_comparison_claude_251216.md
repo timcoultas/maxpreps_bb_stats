@@ -3,7 +3,6 @@ layout: default
 title: Adversarial Review Comparison: Claude vs Gemini - Claude (Dec 16) # (Customize the title for each file)
 parent: AI Critiques & Reports
 ---
-
 # Adversarial Review Comparison: Claude vs Gemini
 
 **Date:** December 16, 2025  
