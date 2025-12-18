@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Adversarial Review: Colorado High School Baseball Projection System - Claude (Dec 16) 
+title: Adversarial Review - Colorado High School Baseball Projection System - Claude (Dec 16) 
 parent: AI Critiques & Reports
 ---
-# Adversarial Review: Colorado High School Baseball Projection System
+# Adversarial Review - Colorado High School Baseball Projection System
 
 **Reviewer Role:** Cynical Sabermetrician, Senior Data Engineer, Python Expert  
 **Review Date:** December 16, 2025  

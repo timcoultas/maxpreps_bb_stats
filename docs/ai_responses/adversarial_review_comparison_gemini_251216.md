@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Adversarial Review Comparison: Gemini vs. Claude - Gemini (Dec 16) 
+title: Adversarial Review Comparison - Gemini vs. Claude - Gemini (Dec 16) 
 parent: AI Critiques & Reports
 ---
-# Adversarial Review Comparison: Gemini vs. Claude
+# Adversarial Review Comparison - Gemini vs. Claude
 
 Date: December 16, 2025
 Subject: Comparison of AI-generated adversarial reviews for the CO High School Baseball Projection System
