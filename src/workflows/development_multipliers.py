@@ -28,24 +28,16 @@ def generate_stat_multipliers():
     Context:
         Baseball Context:
             Not all programs develop players equally. Elite programs - those consistently 
-            in the state top 10 - invest in year-round development: offseason lifting, 
-            winter practices, summer ball with the same coaches. This creates measurably 
-            different development curves than standard programs where players disperse 
-            to various club teams in the offseason.
+            winning regional and state championships - invest in year-round development: 
+            offseason lifting, winter practices, summer ball with the same coaches. This 
+            creates measurably different development curves than standard programs where 
+            players disperse to various club teams in the offseason.
             
         Statistical Validity:
-            Analysis of 1,142 year-over-year player transitions shows statistically 
-            significant differences between elite and standard program development rates,
-            particularly for Junior→Senior pitching:
-            
-            | Metric | Elite  | Standard | Delta   | Interpretation                    |
-            |--------|--------|----------|---------|-----------------------------------|
-            | K_P    | 1.227  | 1.000    | +0.227  | Elite seniors gain 23% more K's   |
-            | ER     | 0.805  | 0.883    | -0.078  | Elite seniors allow fewer runs    |
-            | BB_P   | 0.781  | 1.000    | -0.219  | Elite seniors cut walks 22%       |
-            
-            These differences reflect the cumulative effect of structured year-round 
-            development in elite programs.
+            Analysis of year-over-year player transitions shows statistically significant 
+            differences between elite and standard program development rates, particularly 
+            for Junior→Senior pitching. The specific values are calculated dynamically 
+            based on the current ELITE_TEAMS configuration.
             
         Technical Implementation:
             This script produces THREE output files:
@@ -57,9 +49,9 @@ def generate_stat_multipliers():
             on whether a player's team is in ELITE_TEAMS.
     
     References:
-        - Analysis conducted December 2025 on Colorado 5A historical data (2022-2025)
-        - Elite programs defined as teams with 2+ top-10 state finishes since 2022
-        - Sample sizes: 418 elite transitions, 724 standard transitions
+        - Analysis conducted on Colorado 5A historical data
+        - Elite programs defined in config.py ELITE_TEAMS list
+        - Sample sizes reported dynamically in output
     """
     
     # --- Load Data ---
@@ -92,8 +84,16 @@ def generate_stat_multipliers():
     df['Is_Elite'] = df['Team'].isin(ELITE_TEAMS)
     elite_count = df['Is_Elite'].sum()
     total_count = len(df)
-    print(f"Tagged {elite_count} records as Elite ({elite_count/total_count*100:.1f}%)")
-    print(f"Elite teams in dataset: {df[df['Is_Elite']]['Team'].nunique()}")
+    
+    print(f"\n{'='*80}")
+    print("ELITE TEAMS CONFIGURATION")
+    print(f"{'='*80}")
+    print(f"Number of elite teams defined: {len(ELITE_TEAMS)}")
+    for team in ELITE_TEAMS:
+        team_records = len(df[df['Team'] == team])
+        print(f"  - {team} ({team_records} player-seasons)")
+    print(f"\nTagged {elite_count} records as Elite ({elite_count/total_count*100:.1f}%)")
+    print(f"Elite teams found in dataset: {df[df['Is_Elite']]['Team'].nunique()}")
     
     # --- 4. Join Logic ---
     df_prev = df.copy()
@@ -108,7 +108,7 @@ def generate_stat_multipliers():
     )
     
     total_transitions = len(merged)
-    elite_transitions = merged['Is_Elite_Prev'].sum()
+    elite_transitions = int(merged['Is_Elite_Prev'].sum())
     standard_transitions = total_transitions - elite_transitions
     
     print(f"\nFound {total_transitions} year-over-year player transitions.")
@@ -234,7 +234,9 @@ def generate_stat_multipliers():
         return df_mult
 
     # --- 6. Calculate Multipliers for Each Cohort ---
-    print("\n--- Processing Cohorts ---")
+    print(f"\n{'='*80}")
+    print("PROCESSING COHORTS")
+    print(f"{'='*80}")
     
     # Pooled (all programs) - for backward compatibility
     print("\nCalculating POOLED multipliers (all programs)...")
@@ -251,13 +253,13 @@ def generate_stat_multipliers():
     df_standard = calculate_multipliers_for_cohort(standard_merged, "Standard")
 
     # --- 7. Generate Evidence Report ---
-    print("\n" + "="*80)
+    print(f"\n{'='*80}")
     print("EVIDENCE: ELITE vs STANDARD DEVELOPMENT DIFFERENCES")
-    print("="*80)
-    print("""
+    print(f"{'='*80}")
+    print(f"""
     Why segment by program tier?
     
-    Elite programs (13 teams with 2+ top-10 state finishes since 2022) invest in
+    Elite programs ({len(ELITE_TEAMS)} teams based on regional/state championships) invest in
     year-round player development that standard programs cannot match:
     
     - Daily team lifting sessions (including 6am offseason workouts)
@@ -328,9 +330,9 @@ def generate_stat_multipliers():
     print(f"Saved standard multipliers to '{standard_file}'")
     
     # --- 9. Summary Statistics ---
-    print("\n" + "="*80)
+    print(f"\n{'='*80}")
     print("VOLATILITY ANALYSIS (Lower is Better = More Reliable)")
-    print("="*80)
+    print(f"{'='*80}")
     
     print("\n--- POOLED ---")
     print(df_pooled[['Type', 'Sample_Size', 'Avg_Volatility']].sort_values('Avg_Volatility').to_string())
@@ -341,34 +343,159 @@ def generate_stat_multipliers():
     print("\n--- STANDARD ---")
     print(df_standard[['Type', 'Sample_Size', 'Avg_Volatility']].sort_values('Avg_Volatility').to_string())
     
-    # --- 10. Key Findings Summary ---
-    print("\n" + "="*80)
-    print("KEY FINDINGS SUMMARY")
-    print("="*80)
-    print("""
-    1. JUNIOR → SENIOR PITCHING (Most significant differences)
-       - Elite K_P multiplier: 1.227 vs Standard: 1.000 (+23% more strikeout growth)
-       - Elite ER multiplier: 0.805 vs Standard: 0.883 (Elite reduces runs more)
-       - Elite BB_P multiplier: 0.781 vs Standard: 1.000 (Elite cuts walks 22%)
-       
-    2. SOPHOMORE → JUNIOR PITCHING  
-       - Elite IP multiplier: 1.590 vs Standard: 1.215 (+31% more innings growth)
-       - Elite K_P multiplier: 1.538 vs Standard: 1.292 (+19% more K growth)
-       
-    3. BATTING DEVELOPMENT
-       - Differences less pronounced than pitching
-       - Elite Soph→Jr shows +25% more hits growth (1.552 vs 1.298)
-       
-    4. SAMPLE SIZES
-       - Elite transitions: {} total
-       - Standard transitions: {} total
-       - All cohorts have N > 30 for Class-based transitions (statistically robust)
-       
-    5. RECOMMENDATION
-       - Use elite_development_multipliers.csv for teams in ELITE_TEAMS
-       - Use standard_development_multipliers.csv for all other teams
-       - This better reflects the actual development environment
-    """.format(elite_transitions, standard_transitions))
+    # --- 10. Dynamic Key Findings Summary ---
+    print(f"\n{'='*80}")
+    print("KEY FINDINGS SUMMARY (Dynamically Generated)")
+    print(f"{'='*80}")
+    
+    def safe_get(df, trans, stat, default=1.0):
+        """Safely retrieve a multiplier value."""
+        try:
+            if trans in df.index and stat in df.columns:
+                val = df.loc[trans, stat]
+                return val if pd.notna(val) else default
+            return default
+        except:
+            return default
+    
+    def safe_get_n(df, trans, default=0):
+        """Safely retrieve sample size."""
+        try:
+            if trans in df.index and 'Sample_Size' in df.columns:
+                return int(df.loc[trans, 'Sample_Size'])
+            return default
+        except:
+            return default
+    
+    def format_pct_diff(elite_val, std_val):
+        """Format percentage difference for display."""
+        if std_val == 0 or std_val == 1.0:
+            return f"{(elite_val - 1.0) * 100:+.0f}% vs flat"
+        pct_diff = ((elite_val / std_val) - 1) * 100
+        return f"{pct_diff:+.0f}% relative"
+    
+    # Junior → Senior Pitching
+    jr_sr = 'Junior_to_Senior'
+    jr_sr_elite_n = safe_get_n(df_elite, jr_sr)
+    jr_sr_std_n = safe_get_n(df_standard, jr_sr)
+    
+    print(f"\n1. JUNIOR → SENIOR PITCHING (N: {jr_sr_elite_n} elite, {jr_sr_std_n} standard)")
+    
+    for stat, desc in [('K_P', 'Strikeouts'), ('ER', 'Earned Runs'), ('BB_P', 'Walks')]:
+        e_val = safe_get(df_elite, jr_sr, stat)
+        s_val = safe_get(df_standard, jr_sr, stat)
+        delta = e_val - s_val
+        
+        if stat == 'ER':
+            # Lower is better for ER
+            if delta < 0:
+                interpretation = f"Elite reduces runs {abs(delta)*100:.0f}% more"
+            else:
+                interpretation = f"Standard reduces runs {abs(delta)*100:.0f}% more"
+        else:
+            # Higher is better for K_P (more strikeouts)
+            # Lower is better for BB_P (fewer walks)
+            if stat == 'K_P':
+                if delta > 0:
+                    interpretation = f"Elite gains {delta*100:.0f}% more strikeouts"
+                else:
+                    interpretation = f"No significant advantage"
+            elif stat == 'BB_P':
+                if delta < 0:
+                    interpretation = f"Elite cuts walks {abs(delta)*100:.0f}% more"
+                else:
+                    interpretation = f"No significant advantage"
+        
+        print(f"   - {desc}: Elite {e_val:.3f} vs Standard {s_val:.3f} ({interpretation})")
+    
+    # Sophomore → Junior Pitching
+    so_jr = 'Sophomore_to_Junior'
+    so_jr_elite_n = safe_get_n(df_elite, so_jr)
+    so_jr_std_n = safe_get_n(df_standard, so_jr)
+    
+    print(f"\n2. SOPHOMORE → JUNIOR PITCHING (N: {so_jr_elite_n} elite, {so_jr_std_n} standard)")
+    
+    for stat, desc in [('IP', 'Innings Pitched'), ('K_P', 'Strikeouts')]:
+        e_val = safe_get(df_elite, so_jr, stat)
+        s_val = safe_get(df_standard, so_jr, stat)
+        delta = e_val - s_val
+        
+        if delta > 0.05:
+            interpretation = f"Elite grows {delta*100:.0f}% more"
+        elif delta < -0.05:
+            interpretation = f"Standard grows {abs(delta)*100:.0f}% more"
+        else:
+            interpretation = "No significant difference"
+        
+        print(f"   - {desc}: Elite {e_val:.3f} vs Standard {s_val:.3f} ({interpretation})")
+    
+    # Batting Development
+    print(f"\n3. BATTING DEVELOPMENT")
+    
+    for trans, trans_label in [(so_jr, 'Soph→Jr'), (jr_sr, 'Jr→Sr')]:
+        e_h = safe_get(df_elite, trans, 'H')
+        s_h = safe_get(df_standard, trans, 'H')
+        e_ops = safe_get(df_elite, trans, 'OPS')
+        s_ops = safe_get(df_standard, trans, 'OPS')
+        
+        h_delta = e_h - s_h
+        ops_delta = e_ops - s_ops
+        
+        if abs(h_delta) > 0.1:
+            h_note = f"Elite {'+' if h_delta > 0 else ''}{h_delta*100:.0f}%"
+        else:
+            h_note = "similar"
+        
+        if abs(ops_delta) > 0.05:
+            ops_note = f"Elite {'+' if ops_delta > 0 else ''}{ops_delta*100:.0f}%"
+        else:
+            ops_note = "similar"
+        
+        print(f"   - {trans_label}: Hits ({e_h:.3f} vs {s_h:.3f}, {h_note}), OPS ({e_ops:.3f} vs {s_ops:.3f}, {ops_note})")
+    
+    # Sample Sizes
+    print(f"\n4. SAMPLE SIZES")
+    print(f"   - Elite program transitions: {elite_transitions}")
+    print(f"   - Standard program transitions: {standard_transitions}")
+    print(f"   - Total transitions analyzed: {total_transitions}")
+    
+    # Check statistical robustness
+    min_class_n = min(
+        safe_get_n(df_elite, 'Freshman_to_Sophomore'),
+        safe_get_n(df_elite, 'Sophomore_to_Junior'),
+        safe_get_n(df_elite, 'Junior_to_Senior'),
+        safe_get_n(df_standard, 'Freshman_to_Sophomore'),
+        safe_get_n(df_standard, 'Sophomore_to_Junior'),
+        safe_get_n(df_standard, 'Junior_to_Senior')
+    )
+    
+    if min_class_n >= 30:
+        robustness = "All class-based transitions have N ≥ 30 (statistically robust)"
+    elif min_class_n >= 10:
+        robustness = f"Minimum N = {min_class_n} (marginally robust, interpret with caution)"
+    else:
+        robustness = f"WARNING: Minimum N = {min_class_n} (small sample, results may be unreliable)"
+    
+    print(f"   - {robustness}")
+    
+    # Recommendation
+    print(f"\n5. RECOMMENDATION")
+    
+    # Dynamically determine if elite multipliers show meaningful advantage
+    jr_sr_k_delta = safe_get(df_elite, jr_sr, 'K_P') - safe_get(df_standard, jr_sr, 'K_P')
+    jr_sr_er_delta = safe_get(df_elite, jr_sr, 'ER') - safe_get(df_standard, jr_sr, 'ER')
+    
+    if jr_sr_k_delta > 0.1 or jr_sr_er_delta < -0.05:
+        print(f"   - Elite programs show meaningful pitching development advantages")
+        print(f"   - USE elite_development_multipliers.csv for: {', '.join([t.split(' (')[0] for t in ELITE_TEAMS])}")
+        print(f"   - USE standard_development_multipliers.csv for all other teams")
+    else:
+        print(f"   - Current elite team selection shows minimal differentiation")
+        print(f"   - Consider adjusting ELITE_TEAMS or using pooled multipliers")
+    
+    print(f"\n{'='*80}")
+    print("END OF REPORT")
+    print(f"{'='*80}")
 
 
 if __name__ == "__main__":
