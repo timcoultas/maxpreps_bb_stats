@@ -12,9 +12,19 @@ The system was designed for Colorado 5A baseball, specifically to project Rocky 
 
 **What this is not:** A crystal ball. Baseball is chaotic. A 70% win probability means you lose 3 out of 10 times. The value here is in setting realistic expectations and identifying where your team's strengths and weaknesses lie before the first pitch of spring.
 
+**What this project doesn't do:** Every team and every player has a story: "Pedro had trouble throwing strikes last season, but he worked it out in the summer and he's untouchable now"; or, "Dustin was hurt but now he's hitting lasers." There has been no attempt to put a "thumb on the scale" to address these. For every one that I know there are 10 others. So, if you see a player in the projected rosters who's numbers look like you wouldn't expect, look at last year's performance and you'll probably see the reason. 
+
 ### How This Project Developed
 
 As the 2026 RMHS season was approaching, I was starting to wonder how good this team really would be and if there was a way that I could get some addional information for when I am running GameChanger broadcasts. There had to be a fast way to get that kind of information with AI agents, right? I also work in data (healthtech) and wind up working a lot with AI tools. 
+
+Chatting with AI was not helpful and trying to cajole an AI bot to recreate this information in a repeatable was was not effective. However, AI tools are very good at writing code, so I worked with two AI tools (Gemini and Claude) do develop a set of python scripts to consume the raw max preps information and deliver the outputs. 
+
+I also used AI to fact check itself. I created and "adversarial review" prompt and gave it to both Claude and Gemini. I then had the two bots critque each other's work. After several rounds of this, I got to the point where the results were "good enough" for a first pass. 
+
+So of the prompts and responses delivered by the AI bots: 
+* [AI Prompts](/docs/ai_prompts/)
+* [AI Critiques](/docs/ai_responses/)
 
 ---
 
@@ -92,7 +102,7 @@ This ordering follows guidance from Tango, Lichtman, and Dolphin (*The Book*, 20
 
 **Replacement Level — Generic Players**
 
-Roster backfill uses percentile-based profiles rather than mean imputation. This preserves population variance and aligns with the "Replacement Level" concept in WAR calculations—roughly the 20th-30th percentile of available talent. Elite programs (based on historical state rankings) receive different quality players that non-elite teams. The percentiles below are the percentile performance of an historical sophomore across all 37 teams. 
+Roster backfill uses percentile-based profiles rather than mean imputation. This preserves population variance and aligns with the "Replacement Level" concept in WAR calculations—roughly the 20th-30th percentile of available talent. Elite programs (based on historical state and regional championship performance) receive different quality players that non-elite teams. The percentiles below are the percentile performance of an historical sophomore across all 37 teams. 
 
 * Elite teams: First generic at 50th percentile, second at 20th percentile, third at 10th percentile, additional at 10th 
 * Standard teams: First generic at 30th percentile, second at 10th percentile, additional at 10th 
