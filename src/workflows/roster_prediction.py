@@ -44,11 +44,14 @@ ELITE_PERCENTILE_LADDER = [0.5, 0.2, 0.1]
 MIN_BATTERS = 10
 MIN_PITCHERS = 6
 
-# FIX: Add adjustment for survivor bias
+# Survivor Bias Adjustment
+# Development multipliers are calculated only from players who returned the following year,
+# excluding players who quit or were cut. This creates an upward bias that we partially 
+# correct with a 5% reduction to all projected stats.
 SURVIVOR_BIAS_ADJUSTMENT = 0.95 
 
 def format_ip_output(val):
-    """Converts 3.333 -> 3.1"""
+    """Converts 3.333 -> 3.1 for baseball-standard IP notation."""
     if pd.isna(val): return 0.0
     innings = int(val)
     decimal = val - innings
@@ -58,54 +61,103 @@ def format_ip_output(val):
     if 0.5 < decimal < 0.8: return innings + 0.2
     return float(innings)
 
+
+def load_multipliers():
+    """
+    Loads development multipliers, including elite and standard variants if available.
+    
+    Returns:
+        tuple: (df_pooled, df_elite, df_standard) - DataFrames indexed by Transition.
+               df_elite and df_standard may be None if files don't exist.
+    """
+    multipliers_dir = PATHS['out_development_multipliers']
+    
+    # Pooled (required, backward compatible)
+    pooled_path = os.path.join(multipliers_dir, 'development_multipliers.csv')
+    if not os.path.exists(pooled_path):
+        print(f"Error: {pooled_path} not found. Please run development_multipliers.py first.")
+        return None, None, None
+    
+    df_pooled = pd.read_csv(pooled_path)
+    df_pooled.set_index('Transition', inplace=True)
+    
+    # Elite (optional)
+    elite_path = os.path.join(multipliers_dir, 'elite_development_multipliers.csv')
+    df_elite = None
+    if os.path.exists(elite_path):
+        df_elite = pd.read_csv(elite_path)
+        df_elite.set_index('Transition', inplace=True)
+        print("Loaded elite development multipliers.")
+    
+    # Standard (optional)
+    standard_path = os.path.join(multipliers_dir, 'standard_development_multipliers.csv')
+    df_standard = None
+    if os.path.exists(standard_path):
+        df_standard = pd.read_csv(standard_path)
+        df_standard.set_index('Transition', inplace=True)
+        print("Loaded standard development multipliers.")
+    
+    return df_pooled, df_elite, df_standard
+
+
 def predict_2026_roster():
     """
-    Generates a projected roster for the next season using hierarchical aging curves and dynamic backfilling.
+    Generates a projected roster for the next season using hierarchical aging curves,
+    with separate development multipliers for elite vs standard programs.
 
     Context:
-        This is the core projection engine. We take the current year's returning players 
-        (excluding graduating seniors), apply statistically-derived development multipliers 
-        to project their next-year performance, and fill roster gaps with synthetic "generic" 
-        players representing likely JV call-ups. The result is a complete projected roster 
-        for every team in the league.
+        Baseball Context:
+            This is the core projection engine. We take the current year's returning players 
+            (excluding graduating seniors), apply statistically-derived development multipliers 
+            to project their next-year performance, and fill roster gaps with synthetic "generic" 
+            players representing likely JV call-ups.
+            
+            NEW: Elite programs (those with 2+ top-10 state finishes) now use separate multipliers
+            that reflect their superior player development infrastructure: year-round training,
+            structured winter practices, and summer ball with the same coaching staff.
 
-        The projection uses a Hierarchical Lookup strategy to select multipliers:
-        1. **Class (Age-Based)**: Freshman→Sophomore, etc. Largest sample sizes, most robust.
-        2. **Class_Tenure (Specific)**: Sophomore_Y1→Junior_Y2. Higher specificity but smaller N.
-        3. **Tenure (Experience)**: Year1→Year2. Prone to survivor bias (only elite freshmen 
-           play varsity Year 1, skewing the curve).
-        
-        This ordering prioritizes sample size and reduces selection bias, following guidance 
-        from Tango et al. ("The Book", 2006) on aging curve methodology. The whitepaper 
-        originally stated Tenure→Specific→Class, but empirical volatility analysis showed 
-        Class-based curves are more stable for this dataset.
+        Statistical Validity:
+            Analysis of 1,142 YoY transitions shows elite programs develop players differently,
+            particularly for Junior→Senior pitching:
+            - Elite K_P multiplier: 1.227 vs Standard: 1.000 (+23% more K growth)
+            - Elite ER multiplier: 0.805 vs Standard: 0.883 (better run prevention)
+            - Elite BB_P multiplier: 0.781 vs Standard: 1.000 (22% more walk reduction)
 
-        This mimics a SQL COALESCE across multiple dimension tables:
-        `COALESCE(class_multiplier, specific_multiplier, tenure_multiplier, 1.0)`.
-        The backfill logic is an Upsert/Imputation process identifying gaps (COUNT < 9) 
-        and appending synthesized rows.
+        Technical Implementation:
+            The projection uses a Hierarchical Lookup strategy:
+            1. Class (Age-Based): Freshman→Sophomore, etc. Largest sample sizes.
+            2. Class_Tenure (Specific): Sophomore_Y1→Junior_Y2. Higher specificity.
+            3. Tenure (Experience): Year1→Year2. Prone to survivor bias.
+            
+            For each lookup, the system first checks if elite/standard-specific multipliers
+            exist. If not, it falls back to pooled multipliers.
 
     Returns:
         None. Generates '2026_roster_prediction.csv' file.
     """
     
     # --- 1. Load Data ---
-    stats_path = os.path.join(PATHS['out_historical_stats'],'aggregated_stats.csv')
-    multipliers_path = os.path.join(PATHS['out_development_multipliers'], 'development_multipliers.csv')
+    stats_path = os.path.join(PATHS['out_historical_stats'], 'aggregated_stats.csv')
     generic_path = os.path.join(PATHS['out_generic_players'], 'generic_players.csv')
 
     if not os.path.exists(stats_path):
         print(f"Error: {stats_path} not found. Please run the ETL pipeline first.")
         return
-    if not os.path.exists(multipliers_path):
-        print(f"Error: {multipliers_path} not found. Please run the multiplier script first.")
+    
+    # Load multipliers (pooled + elite + standard)
+    df_pooled, df_elite, df_standard = load_multipliers()
+    if df_pooled is None:
         return
+    
+    # Log multiplier availability
+    has_tiered_multipliers = df_elite is not None and df_standard is not None
+    if has_tiered_multipliers:
+        print("Using TIERED multipliers (elite vs standard programs).")
+    else:
+        print("Using POOLED multipliers (elite/standard files not found).")
         
     print("Loading data...")
-    # Loading the "Fact Table" (History) and "Dimension Tables" (Multipliers)
     df_history = pd.read_csv(stats_path)
-    df_multipliers = pd.read_csv(multipliers_path)
-    df_multipliers.set_index('Transition', inplace=True)
     
     # Load Generic profiles for backfill (if available)
     df_generic = pd.DataFrame()
@@ -116,23 +168,21 @@ def predict_2026_roster():
         print("Warning: generic_players.csv not found. Rosters will NOT be backfilled.")
 
     # --- 2. Prep History (Centralized Logic) ---
-    # Schema Enforcement: Ensure columns are numeric
     stat_cols = [s['abbreviation'] for s in STAT_SCHEMA if s['abbreviation'] in df_history.columns]
     for col in stat_cols:
         df_history[col] = pd.to_numeric(df_history[col], errors='coerce')
     
-    # Standardize names and calculate Varsity_Year
     df_history = prepare_analysis_data(df_history)
     
-    # FIX: Add logging to track player counts through pipeline
+    # Tag elite teams
+    df_history['Is_Elite'] = df_history['Team'].isin(ELITE_TEAMS)
+    
     initial_count = len(df_history)
     print(f"[Pipeline Log] Initial history records: {initial_count}")
     
     # --- 3. Isolate Current Year Roster ---
-    # SQL: WHERE Season_Year = 2025
     df_2025 = df_history[df_history['Season_Year'] == 2025].copy()
     
-    # Fallback if 2025 data is missing
     if df_2025.empty:
         max_year = df_history['Season_Year'].max()
         print(f"Warning: No 2025 data. Switching to {max_year}")
@@ -142,7 +192,6 @@ def predict_2026_roster():
     print(f"[Pipeline Log] 2025 roster records: {pre_filter_count}")
 
     # Remove graduating Seniors
-    # SQL: WHERE Class_Cleaned NOT IN ('Senior')
     df_2025 = df_2025[~df_2025['Class_Cleaned'].isin(['Senior'])]
     
     post_filter_count = len(df_2025)
@@ -150,20 +199,35 @@ def predict_2026_roster():
     print(f"[Pipeline Log] Seniors removed: {seniors_removed}")
     print(f"[Pipeline Log] Returning players: {post_filter_count}")
     
+    # Count elite vs standard
+    elite_returning = df_2025['Is_Elite'].sum()
+    standard_returning = post_filter_count - elite_returning
+    print(f"[Pipeline Log] Elite program players: {elite_returning}")
+    print(f"[Pipeline Log] Standard program players: {standard_returning}")
+    
     # --- 4. Apply Projections ---
     projections = []
     next_class_map = {'Freshman': 'Sophomore', 'Sophomore': 'Junior', 'Junior': 'Senior'}
     
     # Track projection methods for logging
-    method_counts = {'Class (Age-Based)': 0, 'Class_Tenure (Specific)': 0, 
-                     'Tenure (Experience-Based)': 0, 'Default (1.0)': 0, 'Skipped': 0}
+    method_counts = {
+        'Class (Age-Based) - Elite': 0, 
+        'Class (Age-Based) - Standard': 0,
+        'Class (Age-Based) - Pooled': 0,
+        'Class_Tenure (Specific) - Elite': 0,
+        'Class_Tenure (Specific) - Standard': 0,
+        'Class_Tenure (Specific) - Pooled': 0,
+        'Tenure (Experience-Based)': 0, 
+        'Default (1.0)': 0, 
+        'Skipped': 0
+    }
 
     print("Projecting performance...")
     
-    # Cursor-based iteration (vectorization difficult due to complex lookup logic)
     for idx, player in df_2025.iterrows():
         curr_class = player['Class_Cleaned']
         curr_tenure = player['Varsity_Year']
+        is_elite = player['Is_Elite']
         next_class = next_class_map.get(curr_class, 'Unknown')
         next_tenure = curr_tenure + 1
         
@@ -172,7 +236,6 @@ def predict_2026_roster():
             continue 
 
         # --- HIERARCHICAL LOOKUP STRATEGY ---
-        # Priority Order: Class → Specific → Tenure (chosen for lower volatility)
         target_tenure = f"Varsity_Year{curr_tenure}_to_Year{next_tenure}"
         target_specific = f"{curr_class}_Y{curr_tenure}_to_{next_class}_Y{next_tenure}"
         target_class = f"{curr_class}_to_{next_class}"
@@ -180,38 +243,52 @@ def predict_2026_roster():
         applied_factors = None
         method = "None"
         
-        # Priority 1: Class (Biological Age) - Most robust sample size, least selection bias
-        if target_class in df_multipliers.index:
-            applied_factors = df_multipliers.loc[target_class]
-            method = "Class (Age-Based)"
-        # Priority 2: Specific Class + Tenure - High specificity, but lower sample size
-        elif target_specific in df_multipliers.index:
-            applied_factors = df_multipliers.loc[target_specific]
-            method = "Class_Tenure (Specific)"
-        # Priority 3: Tenure Only - Prone to survivor bias
-        elif target_tenure in df_multipliers.index:
-            applied_factors = df_multipliers.loc[target_tenure]
+        # Select the appropriate multiplier DataFrame based on team tier
+        if has_tiered_multipliers:
+            df_mult = df_elite if is_elite else df_standard
+            tier_label = "Elite" if is_elite else "Standard"
+        else:
+            df_mult = df_pooled
+            tier_label = "Pooled"
+        
+        # Priority 1: Class (Biological Age) - Most robust sample size
+        if target_class in df_mult.index:
+            applied_factors = df_mult.loc[target_class]
+            method = f"Class (Age-Based) - {tier_label}"
+        # Priority 2: Specific Class + Tenure
+        elif target_specific in df_mult.index:
+            applied_factors = df_mult.loc[target_specific]
+            method = f"Class_Tenure (Specific) - {tier_label}"
+        # Priority 3: Tenure Only (use pooled to maximize sample size)
+        elif target_tenure in df_pooled.index:
+            applied_factors = df_pooled.loc[target_tenure]
             method = "Tenure (Experience-Based)"
         else:
             method = "Default (1.0)"
         
-        method_counts[method] += 1
+        # Update method counts
+        if method in method_counts:
+            method_counts[method] += 1
+        elif "Class (Age-Based)" in method:
+            method_counts['Class (Age-Based) - Pooled'] += 1
+        elif "Class_Tenure" in method:
+            method_counts['Class_Tenure (Specific) - Pooled'] += 1
 
         # Clone record and update metadata
         proj = player.copy()
         proj['Season'] = 'Projected-Next'
         proj['Season_Cleaned'] = player['Season_Year'] + 1
         proj['Class_Cleaned'] = next_class
-        proj['Varsity_Year'] = curr_tenure
+        proj['Varsity_Year'] = curr_tenure  # Keep actual experience, don't increment
         proj['Projection_Method'] = method
         
         # Apply Multipliers
         if method != "Default (1.0)":
             for col in stat_cols:
-                if col in applied_factors and pd.notna(player[col]):
+                if col in applied_factors.index and pd.notna(player[col]):
                     multiplier = applied_factors[col]
-                    # FIX: Apply Survivor Bias Adjustment here
-                    proj[col] = round(player[col] * multiplier * SURVIVOR_BIAS_ADJUSTMENT, 2)
+                    if pd.notna(multiplier):
+                        proj[col] = round(player[col] * multiplier * SURVIVOR_BIAS_ADJUSTMENT, 2)
                     
                     # Sanity Caps to prevent extrapolation errors
                     if col == 'IP' and proj[col] > 70: 
@@ -221,7 +298,7 @@ def predict_2026_roster():
         
         projections.append(proj)
 
-    # FIX: Log projection method distribution
+    # Log projection method distribution
     print(f"\n[Pipeline Log] Projection Methods Used:")
     for method, count in method_counts.items():
         if count > 0:
@@ -234,7 +311,6 @@ def predict_2026_roster():
         return
 
     # --- 5. Assign Roles (Initial) ---
-    # Boolean masking based on playing time thresholds
     df_proj['Is_Pitcher'] = df_proj['IP'].fillna(0) >= 5
     df_proj['Is_Batter'] = df_proj['AB'].fillna(0) >= 10
 
@@ -253,12 +329,8 @@ def predict_2026_roster():
             n_batters = team_roster['Is_Batter'].sum()
             n_pitchers = team_roster['Is_Pitcher'].sum()
             
-            # Determine tier based on program prestige
             is_powerhouse = team in ELITE_TEAMS
             
-            # [FIX] Step-Down Logic for Realistic Depth
-            # Elite teams: 50% -> 40% -> 30% -> 20% (Floor)
-            # Standard teams: 30% -> 20% -> 10% -> 10% (Floor)
             if is_powerhouse:
                 tier_ladder_batters = ELITE_PERCENTILE_LADDER
                 tier_ladder_pitchers = ELITE_PERCENTILE_LADDER
@@ -268,26 +340,22 @@ def predict_2026_roster():
                 tier_ladder_pitchers = DEFAULT_PERCENTILE_LADDER
                 method_label = 'Backfill (Standard Step-Down)'
 
-            # Filter generic pool for this team's tier
             bat_pool = df_generic[df_generic['Role'] == 'Batter']
             pit_pool = df_generic[df_generic['Role'] == 'Pitcher']
             
-            # Add Batters (Imputation)
+            # Add Batters
             if n_batters < MIN_BATTERS and not bat_pool.empty:
                 needed = MIN_BATTERS - int(n_batters)
                 for i in range(needed):
-                    # [FIX] Pop the best available tier, or use floor if ladder exhausted
                     if i < len(tier_ladder_batters):
                         target_tier = tier_ladder_batters[i]
                     else:
-                        target_tier = tier_ladder_batters[-1] # Floor
+                        target_tier = tier_ladder_batters[-1]
                     
-                    # Find closest match in the pool
                     candidate = bat_pool[bat_pool['Percentile_Tier'] == target_tier]
                     
-                    # Fallback to closest if exact tier missing
                     if candidate.empty:
-                        candidate = bat_pool.iloc[0:1] # Just take top of pool as fail-safe
+                        candidate = bat_pool.iloc[0:1]
 
                     template = candidate.iloc[0].to_dict()
                     
@@ -300,16 +368,14 @@ def predict_2026_roster():
                     new_player['Is_Pitcher'] = False
                     new_player['Projection_Method'] = method_label
                     
-                    # Cleanup internal columns
                     for k in ['Role', 'Percentile_Tier', 'AB_Original', 'PA_Original', 'IP_Original']:
                         new_player.pop(k, None)
                     filled_players.append(new_player)
 
-            # Add Pitchers (Same Logic)
+            # Add Pitchers
             if n_pitchers < MIN_PITCHERS and not pit_pool.empty:
                 needed = MIN_PITCHERS - int(n_pitchers)
                 for i in range(needed):
-                    # [FIX] Step-Down Logic
                     if i < len(tier_ladder_pitchers):
                         target_tier = tier_ladder_pitchers[i]
                     else:
@@ -356,7 +422,7 @@ def predict_2026_roster():
     df_proj = df_proj[final_cols]
     df_proj = df_proj.sort_values(['Team', 'Offensive_Rank_Team', 'Pitching_Rank_Team'])
     
-    # [FIX] Format IP column for final output (3.333 -> 3.1)
+    # Format IP column for final output
     if 'IP' in df_proj.columns:
         df_proj['IP'] = df_proj['IP'].apply(format_ip_output)
 
@@ -366,7 +432,7 @@ def predict_2026_roster():
     
     df_proj.to_csv(output_path, index=False)
     
-    # FIX: Final pipeline summary
+    # Final pipeline summary
     real_players = len(df_proj[~df_proj['Name'].str.contains('Generic', na=False)])
     generic_players = len(df_proj[df_proj['Name'].str.contains('Generic', na=False)])
     print(f"\n[Pipeline Log] Final Roster Summary:")
@@ -374,6 +440,7 @@ def predict_2026_roster():
     print(f"  - Generic backfill players: {generic_players}")
     print(f"  - Total roster size: {len(df_proj)}")
     print(f"\nSuccess! Saved to: {output_path}")
+
 
 if __name__ == "__main__":
     predict_2026_roster()
