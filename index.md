@@ -18,19 +18,17 @@ The system was designed for Colorado 5A baseball, specifically to project Rocky 
 
 **What this is not:** A crystal ball. Baseball is chaotic. A 70% win probability means you lose 3 out of 10 times. The value here is in setting realistic expectations and identifying where your team's strengths and weaknesses lie before the first pitch of spring.
 
-**What this project doesn't do:** Every team and every player has a story: "Pedro had trouble throwing strikes last season, but he worked it out in the summer and he's untouchable now"; or, "Dustin was hurt but now he's hitting lasers." There has been no attempt to put a "thumb on the scale" to address these. For every one that I know there are 10 others. So, if you see a player in the projected rosters whose numbers look like you wouldn't expect, look at last year's performance and you'll probably see the reason. 
+**What this project doesn't do:** Every team and every player has a story: "Pedro had trouble throwing strikes last season, but he worked it out in the summer and he's untouchable now"; or, "Dustin was hurt but now he's hitting lasers." There has been no attempt to put a "thumb on the scale" to address these. For every story that I know, there are 10 others. So, if you see a player in the projected rosters whose numbers look like you wouldn't expect, look at last year's performance and you'll probably see the reason. 
 
 ### How This Project Developed
 
 As the 2026 RMHS season was approaching, I was starting to wonder how good this team really would be and if there was a way that I could get some additional information for when I am running GameChanger broadcasts. There had to be a fast way to get that kind of information with AI agents, right? I also work in data (healthtech) and wind up working a lot with AI tools. 
 
-Chatting with AI was not helpful and trying to cajole an AI bot to recreate this information in a repeatable way was not effective. However, AI tools are very good at writing code, so I worked with two AI tools (Gemini and Claude) to develop a set of python scripts to consume the raw max preps information and deliver the outputs. 
+Chatting with AI was not helpful and trying to cajole an AI bot to generate this information in a repeatable way was not effective. However, AI tools are very good at writing code, so I worked with two AI tools (Gemini and Claude) to develop a set of python scripts to consume raw MaxPreps information and deliver the outputs. 
 
-I also used AI to fact check itself. I created an "adversarial review" prompt and gave it to both Claude and Gemini. I then had the two bots critique each other's work. After several rounds of this, I got to the point where the results were "good enough" for a first pass. 
+I also used AI to fact check itself. I created an "adversarial review" prompt and gave it to both Claude and Gemini.  I then had the two bots critique each other's work. After several rounds of this, I got to the point where the results were "good enough" for a first pass. I also used these AI tools to generate complete and readable information.
 
-Some of the prompts and responses delivered by the AI bots: 
-* [AI Prompts](/docs/ai_prompts/)
-* [AI Critiques](/docs/ai_responses/)
+The prompts and critiques are available in the documentation. 
 
 ---
 
@@ -39,25 +37,33 @@ Some of the prompts and responses delivered by the AI bots:
 Process produces four **key** deliverables:
 
 ### Team Power Rankings
-Every team is given an Overall Power score and ranked. The Overall Power score is based on a combination of the team's Offensive and Pitching Power scores, which are based on projected player performance. The Team Power Rankings also tell you the number of returning team members, returning seniors, and years of varsity experience on the team. 
+Every team gets an Overall Power score from 0 to 100, where 100 is the strongest team in the league. This score is simply the average of two components:
+
+* Offensive Power: How many runs can this lineup produce? We add up the Runs Created scores for the team's top 10 hitters.
+* Pitching Power: How well can this staff prevent runs? We add up the Pitching Dominance scores for the team's top 6 pitchers.
+
+Both components are scaled so that the league's best offense and best pitching staff each score 100. A team with an Overall Power of 50 is roughly half as strong as the top team — though as any baseball fan knows, they can still win on any given day.
+The rankings also show roster composition metrics that help you understand why a team is strong or weak:
+
+* Returning Players: How many real players (not generic backfill) are on the projected roster
+* Returning Seniors: Experienced players in their final year — often a team's backbone
+* Total Varsity Years: The sum of all varsity experience on the roster — a team with 45 collective years has seen a lot more baseball than one with 20
+
+These numbers help distinguish between a veteran-loaded squad expecting a deep playoff run and a young team that's a year away.
 
 **Note:** Unfortunately, I had to exclude Valor Christian. Their data in MaxPreps is fatally flawed and I would not be able to integrate it without a lot of manual work. 
 
 ### Regular Season Simulation
-Game-by-game win probabilities generated by running 1,000 Monte Carlo simulations per matchup. Includes projected scores, confidence labels ("Lock", "Solid", "Toss-up"), and a season summary with floor/ceiling win totals. These are based on team Power Ranking matchups and not more advanced Markov Chain analyses. 
+For each game on the schedule, we ask: "If these two teams played 1,000 times, how often would each team win?" That's the core idea behind Monte Carlo simulation — instead of trying to calculate a precise answer, we let the computer play out the game over and over with randomized scoring (using that "clumpy innings" model described above) and see what happens.
+After 1,000 simulated games, we can say things like "Rocky Mountain wins 623 of them" — which becomes a 62.3% win probability. We also track the average score across all simulations to give you a projected final like "6.2-5.1."
+To make this actionable, we translate win probabilities into confidence labels:
 
-**Sample Output:**
-```
-Date         Opponent                       Win %    Avg Score    Confidence      Analysis
-03/15        Fossil Ridge                   62.3%    6.2-5.1      Solid (W)       Edge: Better Bats, Home Field
-03/18        Cherry Creek                   38.1%    4.8-5.9      Toss-up         Opponent advantage: Their Pitching
-...
+* Lock (W/L): Greater than 90% or less than 10% — barring disaster, you know who wins
+* Solid (W/L): 65-90% or 10-35% — clear favorite, but upsets happen
+* Toss-up: 35-65% — bring your lucky socks
 
-SEASON PROJECTION (1000 Sims):
-Average Record: 14.2 - 8.8
-Ceiling (90th %): 18 Wins
-Floor (10th %):   10 Wins
-```
+We also simulate the entire season 1,000 times to generate floor and ceiling win totals. That "Average Record: 14-9, Ceiling: 18 wins, Floor: 10 wins" tells you the range of realistic outcomes, not just the single most likely one.
+Note: This approach uses team-level Power Rankings to set each team's offensive and pitching strength. It doesn't model individual pitcher matchups or in-game strategy — think of it as "what happens when Team A's overall roster faces Team B's overall roster" rather than "what happens when their ace faces our cleanup hitter."
 
 ### Projected Rosters 
 Complete roster projections for every team in the dataset. Each returning player has their stats projected forward using development multipliers. Batting and Pitching rankings are developed for each player. Roster gaps are filled with tiered generic players. 
@@ -65,7 +71,7 @@ Complete roster projections for every team in the dataset. Each returning player
 ### Historical Player Statistics
 Four years of player season statistics across 37 (and counting) Colorado 5A teams. This information contains player level season data sourced from MaxPreps and aggregates it into one file. 
 
-The following link provides a comprehensive [**data dictionary**](/docs/data_dictionary.md) with explanations of all output tables and suggestions on how to use them. 
+There is a link in the documentation to a Data Dictionary that explains the outputs of all of the models in detail and what each column means. 
 
 ---
 
