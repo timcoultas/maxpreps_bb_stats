@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Gemini Review (Dec 16) # (Customize the title for each file)
+title: Adversarial Review Report: CO High School Baseball Projection System - Gemini (Dec 16) # (Customize the title for each file)
 parent: AI Critiques & Reports
 ---
 Adversarial Review Report: CO High School Baseball Projection System

@@ -4,7 +4,7 @@ title: Home
 nav_order: 1
 ---
 
-# Colorado High School Baseball Projection System
+# CO High School Baseball Projection Project
 
 ## Introduction
 

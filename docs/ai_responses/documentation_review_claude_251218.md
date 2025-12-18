@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Gemini Review (Dec 16) # (Customize the title for each file)
+title: Documentation Review - Claude (Dec 18) # (Customize the title for each file)
 parent: AI Critiques & Reports
 ---
 # Documentation Review: Colorado High School Baseball Projection System

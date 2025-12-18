@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Gemini Review (Dec 16) # (Customize the title for each file)
+title: Adversarial Review Comparison: Claude vs Gemini - Claude (Dec 16) # (Customize the title for each file)
 parent: AI Critiques & Reports
 ---
 

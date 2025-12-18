@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Gemini Review (Dec 16) # (Customize the title for each file)
+title: Future Improvement Opportunities - Claude (Dec 15) # (Customize the title for each file)
 parent: AI Critiques & Reports
 ---
 # Future Improvement Opportunities
