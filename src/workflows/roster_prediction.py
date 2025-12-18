@@ -27,17 +27,16 @@ except ImportError:
 
 
 # --- Configuration Constants ---
-# This tells the script how to pick generic players. 
-# There are "elite" programs like Cherry Creek and Rocky Mountain
-# These are teams that made it into the top 10 rankings 
-# More than once in the last 4 years. (there are 13) 
-# Only 3 made it in more than twice. 
-# The ladder says: for your first generic player you get a sophomore that operates at the percentile; 
-#  You next player is at the next percentile. 
-# So rocky gets their first at median, their second at 20th percentile their third at 10th percentile 
-# The non elite teams start at 30percentile and then drop to 10
+# Elite programs are defined based on regional and state championship performance since 2016.
+# See docs/co_5a_championship_results.md for the analysis. Currently 6 teams qualify:
+# Broomfield, Cherry Creek, Mountain Vista, Cherokee Trail, Regis Jesuit, Rocky Mountain.
+#
+# The percentile ladder controls the quality of generic backfill players:
+# - Elite teams get better replacement players (starting at 50th percentile)
+# - Standard teams start at 30th percentile
+# This reflects the reality that elite programs attract better JV talent.
 
-DEFAULT_PERCENTILE_LADDER = [ 0.3, 0.1]
+DEFAULT_PERCENTILE_LADDER = [0.3, 0.1]
 ELITE_PERCENTILE_LADDER = [0.5, 0.2, 0.1]
 
 # Roster minimums for backfill logic
@@ -112,22 +111,21 @@ def predict_2026_roster():
             to project their next-year performance, and fill roster gaps with synthetic "generic" 
             players representing likely JV call-ups.
             
-            NEW: Elite programs (those with 2+ top-10 state finishes) now use separate multipliers
-            that reflect their superior player development infrastructure: year-round training,
-            structured winter practices, and summer ball with the same coaching staff.
+            Elite programs (defined in config.py based on regional/state championships since 2016) 
+            use separate multipliers that reflect their superior player development infrastructure: 
+            year-round training, structured winter practices, and summer ball with the same coaching staff.
 
         Statistical Validity:
-            Analysis of 1,142 YoY transitions shows elite programs develop players differently,
-            particularly for Junior→Senior pitching:
-            - Elite K_P multiplier: 1.227 vs Standard: 1.000 (+23% more K growth)
-            - Elite ER multiplier: 0.805 vs Standard: 0.883 (better run prevention)
-            - Elite BB_P multiplier: 0.781 vs Standard: 1.000 (22% more walk reduction)
+            Analysis of year-over-year transitions shows elite programs develop players differently,
+            particularly for Junior→Senior pitching. The specific multiplier values are calculated
+            dynamically based on the current ELITE_TEAMS configuration and historical data.
+            Run development_multipliers.py to see the current values and sample sizes.
 
         Technical Implementation:
             The projection uses a Hierarchical Lookup strategy:
-            1. Class (Age-Based): Freshman→Sophomore, etc. Largest sample sizes.
-            2. Class_Tenure (Specific): Sophomore_Y1→Junior_Y2. Higher specificity.
-            3. Tenure (Experience): Year1→Year2. Prone to survivor bias.
+            1. Class (Age-Based): Freshman→Sophomore, etc. Largest sample sizes, most robust.
+            2. Class_Tenure (Specific): Sophomore_Y1→Junior_Y2. Higher specificity when available.
+            3. Tenure (Experience): Year1→Year2. Fallback, prone to survivor bias.
             
             For each lookup, the system first checks if elite/standard-specific multipliers
             exist. If not, it falls back to pooled multipliers.
@@ -279,7 +277,7 @@ def predict_2026_roster():
         proj['Season'] = 'Projected-Next'
         proj['Season_Cleaned'] = player['Season_Year'] + 1
         proj['Class_Cleaned'] = next_class
-        proj['Varsity_Year'] = curr_tenure  # Keep actual experience, don't increment
+        proj['Varsity_Year'] = curr_tenure  # Keep actual completed experience, don't increment
         proj['Projection_Method'] = method
         
         # Apply Multipliers

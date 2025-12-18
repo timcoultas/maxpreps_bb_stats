@@ -36,9 +36,9 @@
 
 ---
 
-### Season Game by Game Simulation
+### Season Game-by-Game Simulation
 
-**Purpose:** Provides Game-by-game season simulation results for Rocky Mountain's schedule. Shows win probability, projected scores, confidence of the projection, and a sort narrative describing the outcome. 
+**Purpose:** Provides game-by-game season simulation results for Rocky Mountain's schedule. Shows win probability, projected scores, confidence of the projection, and a short narrative describing the outcome. 
 
 **Location:** `data/output/team_strength/rocky_mountain_monte_carlo.csv`
 
@@ -75,7 +75,7 @@
 
 ### 2026 Roster Projection
 
-**Purpose:** Complete projected roster for every team with individual player statistics and rankings. This carries non-senior varsity players forward onto the 2026 roster, applies an improvement mulitiplier to them based on historical trends, and fills in empty roster spots with generic players also based on historical data. 
+**Purpose:** Complete projected roster for every team with individual player statistics and rankings. This carries non-senior varsity players forward onto the 2026 roster, applies an improvement multiplier to them based on historical trends, and fills in empty roster spots with generic players also based on historical data. 
 
 **Location:** `data/output/roster_prediction/2026_roster_prediction.csv`
 
@@ -85,8 +85,8 @@
 | **Name** | String | Player name or generic player identifier | ETL: stat_extraction.py / profile_generator.py |
 | **Season_Cleaned** | Integer | Projected season year (e.g., 2026) | Calculated: base year + 1 |
 | **Class_Cleaned** | String | Projected grade level (Freshman, Sophomore, Junior, Senior) | Calculated: next_class_map lookup |
-| **Varsity_Year** | Integer | Number of varsity seasons player is entering (1-4) | Calculated: cumcount() + 1, then +1 for projection |
-| **Projection_Method** | String | Method used to project stats | One of: "Class (Age-Based)", "Class_Tenure (Specific)", "Tenure (Experience-Based)", "Default (1.0)", "Backfill (Elite Step-Down)", "Backfill (Standard Step-Down)", "Generic Baseline" |
+| **Varsity_Year** | Integer | Number of completed varsity seasons (1-4) | Calculated: cumcount() + 1 from historical data |
+| **Projection_Method** | String | Method used to project stats | One of: "Class (Age-Based) - Elite", "Class (Age-Based) - Standard", "Class_Tenure (Specific)", "Tenure (Experience-Based)", "Default (1.0)", "Backfill (Elite Step-Down)", "Backfill (Standard Step-Down)", "Generic Baseline" |
 | **Offensive_Rank_Team** | Integer | Within-team batting rank (1 = best batter on team) | RANK() OVER (PARTITION BY Team ORDER BY RC_Score DESC) |
 | **Pitching_Rank_Team** | Integer | Within-team pitching rank (1 = best pitcher on team) | RANK() OVER (PARTITION BY Team ORDER BY Pitching_Score DESC) |
 
@@ -159,7 +159,7 @@
 
 ### Historical Rosters
 
-**Purpose:** Historical player statistics across all teams and seasons, serving as the source data for projections. This is an aggregate of all historical MaxPreps data that was collected (currently 37 teams for four years 2022- 2025). It provides all of the same statistics columns as the Roster Projection data, but based on actuals pulled from MaxPreps. . 
+**Purpose:** Historical player statistics across all teams and seasons, serving as the source data for projections. This is an aggregate of all historical MaxPreps data that was collected (currently 37 teams for four years 2022-2025). It provides all of the same statistics columns as the Roster Projection data, but based on actuals pulled from MaxPreps.
 
 **Location:** `data/output/historical_stats/aggregated_stats.csv`
 
@@ -186,11 +186,21 @@
 
 ## Supporting Files
 
-### Development Mulitipliers
+### Development Multipliers
 
-**Purpose:** Year-over-year performance ratios used to project player development. These mulitpliers are derived from historical performance. For example, across all Juniors becoming Seniors, what was the median change in ERA? That multiplier is then applied to that age transition. 
+**Purpose:** Year-over-year performance ratios used to project player development. These multipliers are derived from historical performance. For example, across all Juniors becoming Seniors, what was the median change in ERA? That multiplier is then applied to that age transition.
 
-**Location:** `data/output/development_multipliers/development_multipliers.csv`
+**Location:** `data/output/development_multipliers/`
+
+The system produces THREE multiplier files:
+
+| File | Description |
+|------|-------------|
+| `development_multipliers.csv` | Pooled multipliers (all programs combined, backward compatible) |
+| `elite_development_multipliers.csv` | Multipliers for elite programs only |
+| `standard_development_multipliers.csv` | Multipliers for standard programs only |
+
+**Column Structure (all three files):**
 
 | Column | Data Type | Description |
 |--------|-----------|-------------|
@@ -207,6 +217,18 @@
 | Class | Sophomore_to_Junior | All players making this class transition | **Highest N, most stable** |
 | Tenure | Varsity_Year1_to_Year2 | Players by varsity experience | Prone to survivor bias |
 | Class_Tenure | Sophomore_Y1_to_Junior_Y2 | Specific combination | Highest specificity, smaller N |
+
+**Elite vs Standard Programs:**
+
+Elite programs (defined in `config.py` based on regional/state championships since 2016) show measurably different development curves than standard programs. Key differences for Junior→Senior pitching:
+
+| Metric | Description | Elite Effect |
+|--------|-------------|--------------|
+| K_P | Strikeouts | Elite pitchers gain more strikeouts |
+| ER | Earned Runs | Elite pitchers reduce runs more |
+| BB_P | Walks | Elite pitchers cut walks more |
+
+Run `development_multipliers.py` to see current values with dynamic sample sizes.
 
 **Multiplier Interpretation:**
 - `1.0` = No change expected
@@ -252,4 +274,3 @@
 - Pitcher profiles have all batting columns zeroed
 
 ---
-

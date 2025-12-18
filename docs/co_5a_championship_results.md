@@ -1,10 +1,10 @@
-# CO 5A Baseball State and Regional Chapmionship Results
+# CO 5A Baseball State and Regional Championship Results
 
 The table below shows a list of CO 5A baseball teams that have had state or regional championships since 2016, when RPI was implemented. 
 
 This data was surprisingly difficult to get. There may be some inaccuracies in it but the outcome is clear in defining the "elite" teams in the state. 
 
-The table uses a points system where a Regional Chapmionship results in 1 point and a State Championship results in 4 points. Each team is then ranked by the sum of those points. The top 5 teams are defined as **elite** for purposes of the player development algorithm. (Elite teams are listed in bold below.)
+The table uses a points system where a Regional Championship results in 1 point and a State Championship results in 4 points. Each team is then ranked by the sum of those points. The top 6 teams are defined as **elite** for purposes of the player development algorithm. (Elite teams are listed in bold below.)
 
 **Note:** The Valor Christian MaxPreps data is fatally flawed or I would have included them in "elite". 
 
@@ -25,7 +25,7 @@ The table uses a points system where a Regional Chapmionship results in 1 point 
 | Legacy          |                        3 |                   3 |                     0 |                0 |              3 |
 | Pine Creek      |                        2 |                   2 |                     0 |                0 |              2 |
 | Fort Collins    |                        2 |                   2 |                     0 |                0 |              2 |
-| Lengend         |                        2 |                   2 |                     0 |                0 |              2 |
+| Legend          |                        2 |                   2 |                     0 |                0 |              2 |
 | Douglas County  |                        2 |                   2 |                     0 |                0 |              2 |
 | Arvada West     |                        1 |                   1 |                     0 |                0 |              1 |
 | Castle View     |                        1 |                   1 |                     0 |                0 |              1 |

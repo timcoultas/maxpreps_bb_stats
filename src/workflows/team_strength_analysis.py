@@ -11,7 +11,7 @@ except ImportError:
 
 # --- Configuration Constants ---
 # Standardized with game_simulator.py for consistent aggregation
-TOP_N_BATTERS = 10       # Starting lineup + sub
+TOP_N_BATTERS = 10      # Starting lineup + designated hitter
 TOP_N_PITCHERS = 6      # Two starters, one starter/middle, two middle, one closer
 MIN_RC_SCORE = 0.1      # Minimum RC to be considered a viable batter
 MIN_PITCHING_SCORE = 0.1  # Minimum pitching score to be considered viable
@@ -34,8 +34,8 @@ def analyze_team_power_rankings():
         OPS+ or wRC+ works, but scaled to the league leader rather than the league average.
 
         Aggregation Strategy (Standardized with game_simulator.py):
-        - Offense: Top 9 batters by RC_Score (starting lineup)
-        - Pitching: Top 5 pitchers by Pitching_Score (rotation + closer)
+        - Offense: Top 10 batters by RC_Score (starting lineup + DH)
+        - Pitching: Top 6 pitchers by Pitching_Score (rotation + closer)
         
         This approach reflects actual game conditions rather than full roster depth, preventing
         teams with many mediocre players from appearing stronger than teams with fewer elite players.
@@ -69,13 +69,6 @@ def analyze_team_power_rankings():
     df['Is_Returning'] = ~df['Projection_Method'].str.contains('Generic|Backfill', case=False, na=False)
     
     # Calculate roster composition per team
-    # SQL: SELECT Team, 
-    #        COUNT(*) as Total_Roster,
-    #        SUM(CASE WHEN Is_Returning THEN 1 ELSE 0 END) as Returning_Players,
-    #        SUM(CASE WHEN Is_Returning AND Class_Cleaned = 'Senior' THEN 1 ELSE 0 END) as Returning_Seniors,
-    #        SUM(CASE WHEN Is_Returning THEN Varsity_Year ELSE 0 END) as Total_Varsity_Years
-    #      FROM Roster GROUP BY Team
-    
     roster_comp = []
     for team in df['Team'].unique():
         team_df = df[df['Team'] == team]
@@ -94,18 +87,11 @@ def analyze_team_power_rankings():
     
     df_roster_comp = pd.DataFrame(roster_comp)
     
-    # --- 1. Offensive Power Rankings (Top 9 Batters) ---
+    # --- 1. Offensive Power Rankings (Top 10 Batters) ---
     # Filter for players with meaningful offensive contribution
-    # SQL Equivalent: SELECT * FROM Roster WHERE RC_Score > 0.1
     df_batters = df[df['RC_Score'] > MIN_RC_SCORE].copy()
     
-    # Aggregate top 9 batters per team (starting lineup)
-    # SQL Equivalent: 
-    #   SELECT Team, SUM(RC_Score), COUNT(*), FIRST(Name), FIRST(RC_Score)
-    #   FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY Team ORDER BY RC_Score DESC) as rn 
-    #         FROM Batters) 
-    #   WHERE rn <= 9
-    #   GROUP BY Team
+    # Aggregate top 10 batters per team (starting lineup + DH)
     offense_scores = []
     for team in df['Team'].unique():
         team_batters = df_batters[df_batters['Team'] == team].nlargest(TOP_N_BATTERS, 'RC_Score')
@@ -119,7 +105,6 @@ def analyze_team_power_rankings():
                 'Top_Hitter_RC': team_batters.iloc[0]['RC_Score']
             })
         else:
-            # Handle teams with no qualifying batters
             offense_scores.append({
                 'Team': team,
                 'Projected_Runs': 0,
@@ -131,11 +116,9 @@ def analyze_team_power_rankings():
     offense_stats = pd.DataFrame(offense_scores)
     offense_stats = offense_stats.sort_values('Projected_Runs', ascending=False)
     
-    # --- 2. Pitching Power Rankings (Top 5 Pitchers) ---
-    # Filter for players with meaningful pitching contribution
+    # --- 2. Pitching Power Rankings (Top 6 Pitchers) ---
     df_pitchers = df[df['Pitching_Score'] > MIN_PITCHING_SCORE].copy()
     
-    # Aggregate top 5 pitchers per team (rotation + closer)
     pitching_scores = []
     for team in df['Team'].unique():
         team_pitchers = df_pitchers[df_pitchers['Team'] == team].nlargest(TOP_N_PITCHERS, 'Pitching_Score')
@@ -149,7 +132,6 @@ def analyze_team_power_rankings():
                 'Ace_Score': team_pitchers.iloc[0]['Pitching_Score']
             })
         else:
-            # Handle teams with no qualifying pitchers
             pitching_scores.append({
                 'Team': team,
                 'Pitching_dominance': 0,
@@ -162,31 +144,20 @@ def analyze_team_power_rankings():
     pitching_stats = pitching_stats.sort_values('Pitching_dominance', ascending=False)
     
     # --- 3. Combined "Power Index" ---
-    # Merging the aggregated views into a single "Fact Table" for the team.
-    # SQL Equivalent: 
-    #   SELECT * FROM Offense_Stats 
-    #   JOIN Pitching_Stats ON Offense_Stats.Team = Pitching_Stats.Team
-    #   JOIN Roster_Comp ON Offense_Stats.Team = Roster_Comp.Team
     team_rankings = pd.merge(offense_stats, pitching_stats, on='Team', how='outer')
     team_rankings = pd.merge(team_rankings, df_roster_comp, on='Team', how='left')
     team_rankings = team_rankings.fillna(0)
     
-    # Normalization: Finding the "League Leader" to set the curve.
     max_offense = team_rankings['Projected_Runs'].max()
     max_pitching = team_rankings['Pitching_dominance'].max()
     
-    # Safety check to avoid DivideByZero errors
     max_offense = 1 if max_offense == 0 else max_offense
     max_pitching = 1 if max_pitching == 0 else max_pitching
 
-    # Calculating the Index (0-100 Scale).
     team_rankings['Offense_Index'] = (team_rankings['Projected_Runs'] / max_offense * 100).round(1)
     team_rankings['Pitching_Index'] = (team_rankings['Pitching_dominance'] / max_pitching * 100).round(1)
-    
-    # The Composite Score: Simple average of the two phases of the game.
     team_rankings['Total_Power_Index'] = ((team_rankings['Offense_Index'] + team_rankings['Pitching_Index']) / 2).round(1)
     
-    # Final Sorting for display
     team_rankings = team_rankings.sort_values('Total_Power_Index', ascending=False).reset_index(drop=True)
     
     # --- 4. Display & Save ---
@@ -199,7 +170,6 @@ def analyze_team_power_rankings():
     
     for idx, row in team_rankings.iterrows():
         team_display = str(row['Team'])[:33]
-        
         print(f"{idx+1:<5} {team_display:<35} {row['Total_Power_Index']:<7} {row['Offense_Index']:<6} {row['Pitching_Index']:<6} {int(row['Returning_Players']):<5} {int(row['Returning_Seniors']):<4} {int(row['Total_Varsity_Years']):<5}")
 
     # --- 5. Summary Statistics ---
@@ -214,7 +184,6 @@ def analyze_team_power_rankings():
     print(f"Avg Returning Seniors: {team_rankings['Returning_Seniors'].mean():.1f}")
     print(f"Avg Collective Varsity Years: {team_rankings['Total_Varsity_Years'].mean():.1f}")
     
-    # Identify experience tiers
     exp_75 = team_rankings['Total_Varsity_Years'].quantile(0.75)
     exp_25 = team_rankings['Total_Varsity_Years'].quantile(0.25)
     
@@ -241,7 +210,6 @@ def analyze_team_power_rankings():
                    'Total_Varsity_Years', 'Avg_Varsity_Years',
                    'Top_Hitter', 'Top_Hitter_RC', 'Ace_Pitcher', 'Ace_Score']
     
-    # Writing the Materialized View to disk
     team_rankings[output_cols].to_csv(save_path, index=False)
     print(f"\nDetailed analysis saved to: {save_path}")
 
