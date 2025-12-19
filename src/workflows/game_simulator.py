@@ -18,8 +18,27 @@ except ImportError:
 
 def simulate_games(simulations_per_game=1000):
     """
-    Executes Monte Carlo simulation using STANDARDIZED team metrics.
-    Parameters loaded from MODEL_CONFIG.
+Executes a Monte Carlo simulation for every game on the schedule to determine win probabilities.
+
+    Context:
+        Baseball is a game of failure and randomness. The best team doesn't always win. 
+        Instead of predicting a single score (e.g., "Rocky wins 6-4"), we play the game 
+        1,000 times in a virtual sandbox. This accounts for the "any given Sunday" reality 
+        of high school sports, distinguishing between a "Lock" (we win 950/1000 times) and 
+        a "Toss-up" (we win 510/1000 times).
+
+        Statistically, we reject the Poisson distribution (often used for soccer) because baseball 
+        scoring is "clumpy"—runs come in bunches due to the sequential dependency of hitting. 
+        We use the Negative Binomial distribution with a dispersion parameter derived from 
+        Lindsey (1963) to model this variance. This captures the long tail of high-scoring 
+        "blowout" innings that simple averages miss.
+
+        Technically, this is a Cartesian Product simulation. 
+        1. We calculate a `lambda` (expected run rate) for every Game/Simulation tuple.
+        2. We generate `N=1000` random variables per row using `numpy.random.negative_binomial`.
+        3. We perform a `GROUP BY Matchup` aggregation to calculate the mean `Win_Pct`.
+        This avoids the performance cost of looping by vectorizing the random number generation 
+        into a single matrix operation.
     """
     
     # 1. Load Data

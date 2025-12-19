@@ -80,6 +80,33 @@ def load_multipliers():
 
 
 def predict_2026_roster():
+
+# Orchestrates the end-to-end roster generation process for the upcoming season.
+#
+#    Context:
+#        This is the General Manager's war room. We are taking our existing roster, removing the 
+#        graduating seniors, and asking the scouting department: "Who takes a step forward?" 
+#        We apply development paths to returning players and sign free agents (generic backfill) 
+#        to plug holes in the depth chart, ensuring every team can field a competitive lineup.#
+#
+#        Statistically, this creates a "Proforma Roster" using Deterministic Projection. 
+#        We apply the Multiplicative Growth Model ($Stat_{t+1} = Stat_t \times Multiplier$) derived 
+#        from our cohort analysis. We then apply "Replacement Level" theory (Tango, The Book) to fill 
+#        empty roster spots, using percentile-based priors ($P_{50}$ for elite teams, $P_{30}$ for standard) 
+#        rather than mean imputation, preserving the natural variance of talent distribution.
+#
+#        Technically, this is a multi-stage ETL pipeline:
+#        1. **Filter (WHERE):** Remove graduating seniors (`Class != 'Senior'`).
+#        2. **Join (LEFT JOIN):** Match returning players to their specific Development Multiplier 
+#           based on their attributes (Elite status, Class, Tenure).
+#        3. **Union (UNION ALL):** Append "Generic" rows from the `generic_players` reference table 
+#           until roster constraints (`COUNT(Batters) >= 10`) are met.
+#        4. **Update:** Apply the `apply_advanced_rankings` stored procedure to re-rank the new roster.
+#
+#    Returns:
+#        pd.DataFrame: A fully projected dataset saved to CSV.
+
+
     print(f"\n{'='*60}")
     print(f"ROSTER PROJECTION: 2026 Season")
     print(f"{'='*60}")

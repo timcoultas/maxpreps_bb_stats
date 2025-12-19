@@ -40,8 +40,25 @@ def get_confidence_weight(row):
 
 def calculate_team_strength(df_roster):
     """
-    Core aggregation engine. 
-    Uses constants from MODEL_CONFIG for standardization.
+    Aggregates individual player projections into a composite Team Power Index.
+
+    Context:
+        A roster of 15 average sophomores might have the same total stats as a roster of 
+        4 elite seniors, but in a real game, the seniors win. They are physically stronger 
+        and emotionally more mature. This function applies a "Seniority Bonus" to account 
+        for the "Varsity Factor"—the intangible value of experience and leadership that 
+        pure stats often miss.
+
+        Statistically, this is a Weighted Sum Model. We apply coefficients ($w$) to the 
+        raw Runs Created ($RC$) based on class year ($w_{senior}=1.1$, $w_{underclass}=0.9$). 
+        This acts as a Bayesian Prior, adjusting our raw projections based on the historically 
+        higher reliability of upperclassmen performance.
+
+        Technically, this operates as a windowed aggregation:
+        1. **Calculated Field:** `Weighted_RC = RC * Confidence_Weight`
+        2. **Partition & Rank:** `RANK() OVER (PARTITION BY Team ORDER BY Weighted_RC DESC)`
+        3. **Top-N Filter:** Keep only the top 9 batters and top 6 pitchers (the "Starting Rotation").
+        4. **Aggregation:** `SUM()` the weighted values to produce the final index.
     """
     df = df_roster.copy()
     
