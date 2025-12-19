@@ -207,7 +207,6 @@ def predict_2026_roster():
             
             if is_powerhouse:
                 # Elite teams get better replacement players (higher percentiles)
-                # And we flag them so analysis scripts know NOT to penalize them heavily
                 tier_ladder_batters = ELITE_PERCENTILE_LADDER
                 tier_ladder_pitchers = ELITE_PERCENTILE_LADDER
                 method_label = 'Backfill (Elite Step-Down)'
@@ -238,12 +237,9 @@ def predict_2026_roster():
                     new_player['Is_Pitcher'] = False
                     new_player['Projection_Method'] = method_label
                     
-                    # Ensure base stats aren't zero for elite generic players
-                    if is_powerhouse:
-                        # Give them a slight "prestige bump" to raw stats if they are low
-                        for stat in ['H', 'RBI', 'R']:
-                            if new_player.get(stat, 0) < 5: new_player[stat] = 8.0
-                    
+                    # [REMOVED] Manual stat bumps for elite batters. 
+                    # We now rely solely on ELITE_PERCENTILE_LADDER to provide quality backfill.
+
                     for k in ['Role', 'Percentile_Tier', 'AB_Original', 'PA_Original', 'IP_Original']:
                         new_player.pop(k, None)
                     filled_players.append(new_player)
@@ -267,10 +263,8 @@ def predict_2026_roster():
                     new_player['Is_Pitcher'] = True
                     new_player['Projection_Method'] = method_label
                     
-                    if is_powerhouse:
-                         # Elite generic pitchers are likely competent
-                         if new_player.get('IP', 0) < 10: new_player['IP'] = 15.0
-                         if new_player.get('ERA', 99) > 5.0: new_player['ERA'] = 4.50
+                    # [REMOVED] Manual stat bumps for elite pitchers.
+                    # We now rely solely on ELITE_PERCENTILE_LADDER to provide quality backfill.
 
                     for k in ['Role', 'Percentile_Tier', 'AB_Original', 'PA_Original', 'IP_Original']:
                         new_player.pop(k, None)

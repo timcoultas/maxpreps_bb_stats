@@ -1,27 +1,18 @@
 """
-roster_prediction_backtest.py
+roster_prediction.py
 
-Modified version of roster_prediction.py that accepts command-line arguments
-for base year and projection year, enabling backtesting.
-
-Usage:
-    # Normal 2026 projection
-    python roster_prediction_backtest.py --base-year 2025 --projection-year 2026
-    
-    # Backtest: project 2025 from 2024 data
-    python roster_prediction_backtest.py --base-year 2024 --projection-year 2025 --output-suffix _backtest
-
+Generates projected rosters for the upcoming season.
+Now uses centralized MODEL_CONFIG for all thresholds and backfill ladders.
 """
 
 import pandas as pd
 import numpy as np
 import os
 import sys
-import argparse
 
 # --- Import Config & Utils ---
 try:
-    from src.utils.config import STAT_SCHEMA, PATHS
+    from src.utils.config import STAT_SCHEMA, PATHS, MODEL_CONFIG
     try:
         from src.utils.config import ELITE_TEAMS
     except ImportError:
@@ -31,8 +22,8 @@ try:
     from src.models.advanced_ranking import apply_advanced_rankings
 
 except ImportError:
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    from src.utils.config import STAT_SCHEMA, PATHS
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+    from src.utils.config import STAT_SCHEMA, PATHS, MODEL_CONFIG
     try:
         from src.utils.config import ELITE_TEAMS
     except ImportError:
@@ -42,29 +33,16 @@ except ImportError:
     from src.models.advanced_ranking import apply_advanced_rankings
 
 
-# --- Configuration Constants ---
-DEFAULT_PERCENTILE_LADDER = [0.3, 0.1]
-ELITE_PERCENTILE_LADDER = [0.5, 0.2, 0.1]
-
-MIN_BATTERS = 10
-MIN_PITCHERS = 6
-
-SURVIVOR_BIAS_ADJUSTMENT = 0.95 
-
-
 def format_ip_output(val):
-    """Converts 3.333 -> 3.1 for baseball-standard IP notation."""
     if pd.isna(val): return 0.0
     innings = int(val)
     decimal = val - innings
-    
     if 0.25 < decimal < 0.5: return innings + 0.1
     if 0.5 < decimal < 0.8: return innings + 0.2
     return float(innings)
 
 
 def load_multipliers():
-    """Loads development multipliers."""
     multipliers_dir = PATHS['out_development_multipliers']
     
     pooled_path = os.path.join(multipliers_dir, 'development_multipliers.csv')
@@ -90,21 +68,11 @@ def load_multipliers():
     return df_pooled, df_elite, df_standard
 
 
-def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""):
-    """
-    Generates a projected roster using data up to base_year, projecting into projection_year.
-    
-    Args:
-        base_year: The most recent year of data to use (e.g., 2024)
-        projection_year: The year to project into (e.g., 2025)
-        output_suffix: Optional suffix for output filename (e.g., "_backtest")
-    """
-    
+def predict_2026_roster():
     print(f"\n{'='*60}")
-    print(f"ROSTER PROJECTION: {base_year} → {projection_year}")
+    print(f"ROSTER PROJECTION: 2026 Season")
     print(f"{'='*60}")
     
-    # --- 1. Load Data ---
     stats_path = os.path.join(PATHS['out_historical_stats'], 'aggregated_stats.csv')
     generic_path = os.path.join(PATHS['out_generic_players'], 'generic_players.csv')
 
@@ -125,7 +93,7 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
     if os.path.exists(generic_path):
         df_generic = pd.read_csv(generic_path)
 
-    # --- 2. Prep History ---
+    # Prep History
     stat_cols = [s['abbreviation'] for s in STAT_SCHEMA if s['abbreviation'] in df_history.columns]
     for col in stat_cols:
         df_history[col] = pd.to_numeric(df_history[col], errors='coerce')
@@ -133,34 +101,19 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
     df_history = prepare_analysis_data(df_history)
     df_history['Is_Elite'] = df_history['Team'].isin(ELITE_TEAMS)
     
-    # --- 3. BACKTEST FILTER: Only use data up to base_year ---
-    df_history_filtered = df_history[df_history['Season_Year'] <= base_year].copy()
+    current_year = 2025
+    projection_year = 2026
     
-    print(f"[Backtest] Filtering history to years <= {base_year}")
-    print(f"[Backtest] Records before filter: {len(df_history)}")
-    print(f"[Backtest] Records after filter: {len(df_history_filtered)}")
-    print(f"[Backtest] Years in filtered data: {sorted(df_history_filtered['Season_Year'].unique())}")
-    
-    # --- 4. Isolate Base Year Roster ---
-    df_base = df_history_filtered[df_history_filtered['Season_Year'] == base_year].copy()
-    
-    if df_base.empty:
-        print(f"Error: No data found for base year {base_year}")
-        return
-
-    print(f"[Pipeline Log] {base_year} roster records: {len(df_base)}")
+    df_base = df_history[df_history['Season_Year'] == current_year].copy()
+    if df_base.empty: return
 
     # Remove graduating Seniors
     df_base = df_base[~df_base['Class_Cleaned'].isin(['Senior'])]
     
-    print(f"[Pipeline Log] After removing seniors: {len(df_base)}")
-    
-    # --- 5. Apply Projections ---
+    # --- Apply Projections ---
     projections = []
     next_class_map = {'Freshman': 'Sophomore', 'Sophomore': 'Junior', 'Junior': 'Senior'}
     
-    method_counts = {}
-
     for idx, player in df_base.iterrows():
         curr_class = player['Class_Cleaned']
         curr_tenure = player['Varsity_Year']
@@ -168,8 +121,7 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
         next_class = next_class_map.get(curr_class, 'Unknown')
         next_tenure = curr_tenure + 1
         
-        if next_class == 'Unknown':
-            continue 
+        if next_class == 'Unknown': continue 
 
         target_tenure = f"Varsity_Year{curr_tenure}_to_Year{next_tenure}"
         target_specific = f"{curr_class}_Y{curr_tenure}_to_{next_class}_Y{next_tenure}"
@@ -197,8 +149,6 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
         else:
             method = "Default (1.0)"
         
-        method_counts[method] = method_counts.get(method, 0) + 1
-
         proj = player.copy()
         proj['Season'] = f'Projected-{projection_year}'
         proj['Season_Cleaned'] = projection_year
@@ -211,7 +161,8 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
                 if col in applied_factors.index and pd.notna(player[col]):
                     multiplier = applied_factors[col]
                     if pd.notna(multiplier):
-                        proj[col] = round(player[col] * multiplier * SURVIVOR_BIAS_ADJUSTMENT, 2)
+                        # Use Constant from Config for Survivor Bias
+                        proj[col] = round(player[col] * multiplier * MODEL_CONFIG['SURVIVOR_BIAS_ADJUSTMENT'], 2)
                     
                     if col == 'IP' and proj[col] > 70: 
                         proj[col] = 70.0
@@ -220,21 +171,13 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
         
         projections.append(proj)
 
-    print(f"\n[Pipeline Log] Projection Methods Used:")
-    for method, count in sorted(method_counts.items(), key=lambda x: -x[1]):
-        print(f"  - {method}: {count}")
-
     df_proj = pd.DataFrame(projections)
     
-    if df_proj.empty:
-        print("No projections generated.")
-        return
-
-    # --- 6. Assign Roles ---
+    # Assign Roles
     df_proj['Is_Pitcher'] = df_proj['IP'].fillna(0) >= 5
     df_proj['Is_Batter'] = df_proj['AB'].fillna(0) >= 10
 
-    # --- 7. Backfill Rosters ---
+    # --- Elite Backfill Logic ---
     if not df_generic.empty:
         filled_players = []
         teams = df_proj['Team'].unique()
@@ -247,19 +190,26 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
             is_powerhouse = team in ELITE_TEAMS
             
             if is_powerhouse:
-                tier_ladder_batters = ELITE_PERCENTILE_LADDER
-                tier_ladder_pitchers = ELITE_PERCENTILE_LADDER
+                # Use Elite Ladder from Config
+                tier_ladder_batters = MODEL_CONFIG['ELITE_PERCENTILE_LADDER']
+                tier_ladder_pitchers = MODEL_CONFIG['ELITE_PERCENTILE_LADDER']
                 method_label = 'Backfill (Elite Step-Down)'
             else:
-                tier_ladder_batters = DEFAULT_PERCENTILE_LADDER
-                tier_ladder_pitchers = DEFAULT_PERCENTILE_LADDER
+                # Use Default Ladder from Config
+                tier_ladder_batters = MODEL_CONFIG['DEFAULT_PERCENTILE_LADDER']
+                tier_ladder_pitchers = MODEL_CONFIG['DEFAULT_PERCENTILE_LADDER']
                 method_label = 'Backfill (Standard Step-Down)'
 
             bat_pool = df_generic[df_generic['Role'] == 'Batter']
             pit_pool = df_generic[df_generic['Role'] == 'Pitcher']
             
-            if n_batters < MIN_BATTERS and not bat_pool.empty:
-                needed = MIN_BATTERS - int(n_batters)
+            # Use Config Limits
+            limit_batters = MODEL_CONFIG['MIN_ROSTER_BATTERS']
+            limit_pitchers = MODEL_CONFIG['MIN_ROSTER_PITCHERS']
+            
+            # --- Batter Backfill ---
+            if n_batters < limit_batters and not bat_pool.empty:
+                needed = limit_batters - int(n_batters)
                 for i in range(needed):
                     target_tier = tier_ladder_batters[min(i, len(tier_ladder_batters)-1)]
                     candidate = bat_pool[bat_pool['Percentile_Tier'] == target_tier]
@@ -280,8 +230,9 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
                         new_player.pop(k, None)
                     filled_players.append(new_player)
 
-            if n_pitchers < MIN_PITCHERS and not pit_pool.empty:
-                needed = MIN_PITCHERS - int(n_pitchers)
+            # --- Pitcher Backfill ---
+            if n_pitchers < limit_pitchers and not pit_pool.empty:
+                needed = limit_pitchers - int(n_pitchers)
                 for i in range(needed):
                     target_tier = tier_ladder_pitchers[min(i, len(tier_ladder_pitchers)-1)]
                     candidate = pit_pool[pit_pool['Percentile_Tier'] == target_tier]
@@ -303,14 +254,11 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
                     filled_players.append(new_player)
                     
         if filled_players:
-            print(f"[Pipeline Log] Backfilling {len(filled_players)} generic player slots.")
             df_filled = pd.DataFrame(filled_players)
             df_proj = pd.concat([df_proj, df_filled], ignore_index=True)
 
-    # --- 8. Calculate Ranks ---
     df_proj = apply_advanced_rankings(df_proj)
 
-    # --- 9. Save ---
     meta_cols_start = ['Team', 'Name', 'Season_Cleaned', 'Class_Cleaned', 'Varsity_Year', 
                        'Projection_Method', 'Offensive_Rank_Team', 'Pitching_Rank_Team']
     meta_cols_end = ['Is_Batter', 'Is_Pitcher', 'Offensive_Rank', 'Pitching_Rank', 
@@ -326,38 +274,14 @@ def predict_roster(base_year: int, projection_year: int, output_suffix: str = ""
     if 'IP' in df_proj.columns:
         df_proj['IP'] = df_proj['IP'].apply(format_ip_output)
 
-    # Output to backtest subfolder
-    output_dir = os.path.join(PATHS['out_roster_prediction'], 'backtest')
+    output_dir = PATHS['out_roster_prediction']
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f'{projection_year}_roster_prediction{output_suffix}.csv')
+    output_path = os.path.join(output_dir, f'{projection_year}_roster_prediction.csv')
     
     df_proj.to_csv(output_path, index=False)
-    
-    real_players = len(df_proj[~df_proj['Name'].str.contains('Generic', na=False)])
-    generic_players = len(df_proj[df_proj['Name'].str.contains('Generic', na=False)])
-    
-    print(f"\n[Pipeline Log] Final Roster Summary:")
-    print(f"  - Real projected players: {real_players}")
-    print(f"  - Generic backfill players: {generic_players}")
-    print(f"  - Total roster size: {len(df_proj)}")
     print(f"\nSaved to: {output_path}")
     
     return df_proj
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Generate roster projections with configurable years")
-    parser.add_argument('--base-year', type=int, default=2025, 
-                        help='Most recent year of data to use (default: 2025)')
-    parser.add_argument('--projection-year', type=int, default=2026,
-                        help='Year to project into (default: 2026)')
-    parser.add_argument('--output-suffix', type=str, default='',
-                        help='Suffix for output filename (e.g., "_backtest")')
-    
-    args = parser.parse_args()
-    
-    predict_roster(args.base_year, args.projection_year, args.output_suffix)
-
-
 if __name__ == "__main__":
-    main()
+    predict_2026_roster()

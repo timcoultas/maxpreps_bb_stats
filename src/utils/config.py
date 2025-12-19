@@ -4,28 +4,11 @@ import os
 Configuration: Statistical Schema Definition
 
 Summary:
-    Centralized configuration file acting as the Master Data Dictionary and Schema Registry for the project.
-
-Context:
-    This is the official Scorekeeping Rulebook. Just as the umpire needs to know the difference between 
-    a hit and an error, our system needs to know exactly which numbers to pull from the box score. 
-    This file defines the specific columns we care about—ignoring the noise—so we can build a consistent 
-    scouting report for every player.
-
-    From a statistical standpoint, this defines the Operational Definitions for all dependent variables. 
-    By explicitly mapping variable names (e.g., 'H') to specific source classes (e.g., 'hits stat dw'), 
-    we ensure construct validity. This prevents ambiguity where "Runs" could be interpreted as "Runs Scored" 
-    vs "Runs Allowed" unless strictly defined here.
-
-    Technically, think of this as the DDL (Data Definition Language) for our NoSQL extraction process. 
-    We are mapping JSON keys (or HTML classes) to our internal Relational Column names. This dictionary 
-    drives the entire downstream ETL process, acting as the config file that controls the `SELECT` statement 
-    in `stat_extraction.py`.
+    Centralized configuration file acting as the Master Data Dictionary and Schema Registry.
+    Now includes Modeling & Simulation constants to prevent configuration sprawl.
 """
 
 # --- 1. Centralized Path Configuration ---
-# Calculate project root (3 levels up from src/utils/config.py)
-# Acts as the ROOT_PATH variable in a file storage system
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 OUTPUT_DIR = os.path.join(DATA_DIR, "output")
@@ -45,12 +28,9 @@ PATHS = {
     "out_historical_stats": os.path.join(OUTPUT_DIR, "historical_stats")
 }
 
-# --- 2. Statistics Configuration
-# This list functions as the Master Data Dictionary. 
-# It dictates the schema for the resulting Pandas DataFrames (tables).
+# --- 2. Statistics Configuration ---
 STAT_SCHEMA = [
     # --- BATTING ---
-    # Mapping source HTML class (Source System Field) to internal abbreviation (Target Column)
     {"abbreviation": "PA",   "max_preps_class": "plateappearances stat dw",        "stat_type": "Batting", "description": "Plate Appearances"},
     {"abbreviation": "AB",   "max_preps_class": "atbats stat dw",                  "stat_type": "Batting", "description": "At Bats"},
     {"abbreviation": "AVG",  "max_preps_class": "battingaverage stat dw",          "stat_type": "Batting", "description": "Batting Average"},
@@ -94,8 +74,7 @@ STAT_SCHEMA = [
     {"abbreviation": "DP",  "max_preps_class": "doubleplays stat dw",   "stat_type": "Fielding" ,"description": "Double Plays"}
 ]
 
-# -- This provides a group of elite teams based on state and regional championships since 2016
-# See documentation
+# --- 3. Modeling & Simulation Configuration ---
 ELITE_TEAMS = [
     "Broomfield (CO)", 
     "Cherry Creek (Greenwood Village, CO)",
@@ -104,3 +83,31 @@ ELITE_TEAMS = [
     "Regis Jesuit (Aurora, CO)", 
     "Rocky Mountain (Fort Collins, CO)" 
 ]
+
+MODEL_CONFIG = {
+    # Ranking Logic (Team Strength)
+    'TOP_N_BATTERS': 9,
+    'TOP_N_PITCHERS': 6,
+    'MIN_RC_SCORE': 0.1,       # Minimum score to be considered a viable batter
+    'MIN_PITCHING_SCORE': 0.1, # Minimum score to be considered a viable pitcher
+    
+    # Confidence Weights (Age/Experience)
+    'WEIGHT_SENIOR': 1.10,
+    'WEIGHT_JUNIOR': 1.00,
+    'WEIGHT_UNDERCLASS': 0.90,
+    'WEIGHT_GENERIC_ELITE': 0.90,
+    'WEIGHT_GENERIC_STD': 0.75,
+    
+    # Simulation Logic (Monte Carlo)
+    'LEAGUE_BASE_RUNS': 6.0,          # Conservative baseline
+    'HOME_FIELD_ADVANTAGE': 1.10,
+    'DEFAULT_DISPERSION': 1.3,
+    'MIN_INDEX_FLOOR': 0.30,          # Prevents runaway multipliers against weak teams
+    
+    # Roster Prediction (Backfill)
+    'DEFAULT_PERCENTILE_LADDER': [0.3, 0.1],
+    'ELITE_PERCENTILE_LADDER': [0.5, 0.2, 0.1],
+    'MIN_ROSTER_BATTERS': 10,
+    'MIN_ROSTER_PITCHERS': 6,
+    'SURVIVOR_BIAS_ADJUSTMENT': 0.95
+}
