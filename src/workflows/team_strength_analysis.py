@@ -98,27 +98,56 @@ def calculate_team_strength(df_roster):
         weights_pit = weights_pit[:len(top_pitchers)]
         pit_weighted = sum(s * w for s, w in zip(top_pitchers['Weighted_Pitching'], weights_pit))
 
+        # --- METADATA & COMPOSITION METRICS ---
+        # Identify "Returning" players (exclude Generics)
+        returning_mask = ~team_df['Name'].str.contains('Generic', case=False, na=False)
+        returning_df = team_df[returning_mask]
+        
+        # Counts by Class (Returning players only)
+        ret_seniors = len(returning_df[returning_df['Class_Cleaned'] == 'Senior'])
+        ret_juniors = len(returning_df[returning_df['Class_Cleaned'] == 'Junior'])
+        ret_sophs = len(returning_df[returning_df['Class_Cleaned'] == 'Sophomore'])
+        
+        # Experience Metrics
+        total_varsity = returning_df['Varsity_Year'].sum() if not returning_df.empty else 0
+        avg_varsity = returning_df['Varsity_Year'].mean() if not returning_df.empty else 0.0
+
+        # Key Player Details
         ace_name = top_pitchers.iloc[0]['Name'] if not top_pitchers.empty else "N/A"
+        ace_score = top_pitchers.iloc[0]['Pitching_Score'] if not top_pitchers.empty else 0.0
+        
         top_hitter = top_batters.iloc[0]['Name'] if not top_batters.empty else "N/A"
+        top_hitter_rc = top_batters.iloc[0]['RC_Score'] if not top_batters.empty else 0.0
 
         team_stats.append({
             'Team': team,
+            # Core Strength Metrics
             'Offense_Raw': off_raw,
             'Offense_Weighted': off_weighted,
             'Pitching_Raw': pit_raw,
             'Pitching_Weighted': pit_weighted,
             'Batters_Count': len(top_batters),
             'Pitchers_Count': len(top_pitchers),
+            
+            # Key Players
             'Ace_Pitcher': ace_name,
-            'Top_Hitter': top_hitter
+            'Ace_Score': ace_score,
+            'Top_Hitter': top_hitter,
+            'Top_Hitter_RC': top_hitter_rc,
+            
+            # Composition Metadata
+            'Returning_Players': len(returning_df),
+            'Returning_Seniors': ret_seniors,
+            'Returning_Juniors': ret_juniors,
+            'Returning_Sophs': ret_sophs,
+            'Total_Varsity_Years': int(total_varsity),
+            'Avg_Varsity_Years': round(avg_varsity, 2)
         })
         
     return pd.DataFrame(team_stats)
 
 
 def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"):
-    # ... (Rest of function remains identical, logic unchanged) ...
-    # (Just ensures the import of PATHS is correct)
     if input_file:
         input_path = input_file
     else:
@@ -131,8 +160,10 @@ def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"
     print(f"Loading roster projections from {input_path}...")
     df = pd.read_csv(input_path)
     
+    # Calculate Strength (Includes new metadata)
     team_rankings = calculate_team_strength(df)
     
+    # Calculate Indices
     max_offense = team_rankings['Offense_Weighted'].max() or 1
     max_pitching = team_rankings['Pitching_Weighted'].max() or 1
 
@@ -142,17 +173,19 @@ def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"
     team_rankings['Total_Power_Index'] = ((team_rankings['Offense_Index'] + team_rankings['Pitching_Index']) / 2).round(1)
     team_rankings = team_rankings.sort_values('Total_Power_Index', ascending=False).reset_index(drop=True)
     
+    # Display Report
     print(f"\n=== {year_label} TEAM POWER RANKINGS (SENIORITY ADJUSTED) ===")
     print(f"Weights: Senior ({MODEL_CONFIG['WEIGHT_SENIOR']}x), Junior ({MODEL_CONFIG['WEIGHT_JUNIOR']}x), Underclass ({MODEL_CONFIG['WEIGHT_UNDERCLASS']}x)\n")
     
-    header = f"{'Rank':<5} {'Team':<35} {'Power':<7} {'Off.':<6} {'Pit.':<6} {'Ace':<20}"
+    # Expanded Header to show composition
+    header = f"{'Rank':<5} {'Team':<32} {'Power':<6} {'Off':<6} {'Pit':<6} {'Ace':<18} {'Ret':<4} {'Snr':<4} {'Exp':<4}"
     print(header)
     print("-" * len(header))
     
     for idx, row in team_rankings.head(25).iterrows():
-        team_display = str(row['Team'])[:33]
-        ace_display = str(row['Ace_Pitcher'])[:18]
-        print(f"{idx+1:<5} {team_display:<35} {row['Total_Power_Index']:<7} {row['Offense_Index']:<6} {row['Pitching_Index']:<6} {ace_display:<20}")
+        team_display = str(row['Team'])[:30]
+        ace_display = str(row['Ace_Pitcher'])[:16]
+        print(f"{idx+1:<5} {team_display:<32} {row['Total_Power_Index']:<6} {row['Offense_Index']:<6} {row['Pitching_Index']:<6} {ace_display:<18} {row['Returning_Players']:<4} {row['Returning_Seniors']:<4} {row['Avg_Varsity_Years']:<4}")
 
     output_dir = PATHS['out_team_strength']
     os.makedirs(output_dir, exist_ok=True)
