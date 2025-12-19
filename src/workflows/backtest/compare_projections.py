@@ -151,12 +151,14 @@ def compare_team_rankings(df_proj: pd.DataFrame, df_actual: pd.DataFrame) -> pd.
     # Aggregate to team level for both datasets
     def aggregate_team_strength(df, label):
         # Top 10 batters
-        offense = df[df['RC_Score'] > 0.1].groupby('Team').apply(
+        # Explicitly select [['RC_Score']] to prevent Pandas 2.2+ FutureWarning regarding grouping columns
+        offense = df[df['RC_Score'] > 0.1].groupby('Team')[['RC_Score']].apply(
             lambda x: x.nlargest(10, 'RC_Score')['RC_Score'].sum()
         ).reset_index(name=f'Offense_{label}')
         
         # Top 6 pitchers
-        pitching = df[df['Pitching_Score'] > 0.1].groupby('Team').apply(
+        # Explicitly select [['Pitching_Score']] to prevent Pandas 2.2+ FutureWarning regarding grouping columns
+        pitching = df[df['Pitching_Score'] > 0.1].groupby('Team')[['Pitching_Score']].apply(
             lambda x: x.nlargest(6, 'Pitching_Score')['Pitching_Score'].sum()
         ).reset_index(name=f'Pitching_{label}')
         

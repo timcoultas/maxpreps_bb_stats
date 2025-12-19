@@ -20,20 +20,33 @@ import os
 import sys
 import subprocess
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Ensure we can import from src even if running from outside root
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
-from src.utils.config import PATHS
+try:
+    from src.utils.config import PATHS
+except ImportError:
+    # Fallback if path setup failed, though the sys.path append above should catch it
+    print("Warning: Could not import src.utils.config. Checking paths...")
+    # Attempt to define PATHS manually for the script to function if import fails
+    # This is a fallback to allow the script to at least print errors
+    PATHS = {
+        'out_roster_prediction': os.path.join(current_dir, 'data', 'output', 'roster_prediction'),
+        'input': os.path.join(current_dir, 'data', 'input')
+    }
 
 
-def run_command(description: str, command: list):
+def run_command(description: str, command: list, env: dict = None):
     """Runs a command and prints status."""
     print(f"\n{'='*60}")
     print(f"STEP: {description}")
     print(f"{'='*60}")
     print(f"Running: {' '.join(command)}\n")
     
-    result = subprocess.run(command, capture_output=False)
+    # Run with the modified environment (containing PYTHONPATH)
+    result = subprocess.run(command, capture_output=False, env=env)
     
     if result.returncode != 0:
         print(f"ERROR: {description} failed with code {result.returncode}")
@@ -50,16 +63,28 @@ def main():
 ╚══════════════════════════════════════════════════════════════════╝
     """)
     
-    # Get the directory where this script lives
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # 1. Setup Paths
+    # The script is likely at the project root
+    project_root = os.path.dirname(os.path.abspath(__file__))
     
+    # We need to set PYTHONPATH for subprocesses so they can resolve 'from src.utils...'
+    # This creates a copy of the current environment and adds the project root to it
+    env = os.environ.copy()
+    env["PYTHONPATH"] = project_root + os.pathsep + env.get("PYTHONPATH", "")
+
+    # Define paths to the workflow scripts (UPDATED to src/workflows/backtest/)
+    roster_script = os.path.join(project_root, 'src', 'workflows', 'backtest', 'roster_prediction_backtest.py')
+    extract_script = os.path.join(project_root, 'src', 'workflows', 'backtest', 'extract_actuals.py')
+    compare_script = os.path.join(project_root, 'src', 'workflows', 'backtest', 'compare_projections.py')
+
     # --- Step 1: Generate 2025 Projections from 2024 Data ---
     success = run_command(
         "Generate 2025 roster projections (from 2024 data)",
-        [sys.executable, os.path.join(script_dir,'src','workflows', 'roster_prediction_backtest.py'),
+        [sys.executable, roster_script,
          '--base-year', '2024',
          '--projection-year', '2025',
-         '--output-suffix', '_backtest']
+         '--output-suffix', '_backtest'],
+        env=env
     )
     if not success:
         return
@@ -67,8 +92,9 @@ def main():
     # --- Step 2: Extract Actual 2025 Stats ---
     success = run_command(
         "Extract actual 2025 statistics",
-        [sys.executable, os.path.join(script_dir, 'extract_actuals.py'),
-         '--year', '2025']
+        [sys.executable, extract_script,
+         '--year', '2025'],
+        env=env
     )
     if not success:
         return
@@ -83,7 +109,7 @@ def main():
     simulation_file = os.path.join(backtest_dir, 'rocky_mountain_monte_carlo_backtest.csv')
     
     compare_cmd = [
-        sys.executable, os.path.join(script_dir, 'compare_projections.py'),
+        sys.executable, compare_script,
         '--projection-file', projection_file,
         '--actuals-file', actuals_file
     ]
@@ -97,7 +123,8 @@ def main():
     
     success = run_command(
         "Compare projections to actual results",
-        compare_cmd
+        compare_cmd,
+        env=env
     )
     
     # --- Summary ---
