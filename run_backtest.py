@@ -1,24 +1,23 @@
 """
 run_backtest.py
 
-Orchestrates a complete backtest of the projection system:
-1. Generate 2025 projections using only 2024 data
-2. Extract actual 2025 stats for comparison
-3. Run game simulation against 2025 schedule
-4. Compare projections to actuals
+Orchestrates a complete backtest of the projection system for a specific year.
+1. Generate projections for {target_year} using only {base_year} data
+2. Extract actual {target_year} stats for comparison
+3. Compare projections to actuals
 
 Usage:
-    python run_backtest.py
+    python run_backtest.py --year 2025  (Default)
+    python run_backtest.py --year 2024
     
 Prerequisites:
-    - aggregated_stats.csv must contain 2022-2025 data
-    - rocky_mountain_schedule_2025.csv in data/input/
-    - rocky_mountain_results_2025.csv in data/input/ (optional, for game comparison)
+    - aggregated_stats.csv must contain data for the relevant years
 """
 
 import os
 import sys
 import subprocess
+import argparse
 
 # Ensure we can import from src even if running from outside root
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,8 +29,6 @@ try:
 except ImportError:
     # Fallback if path setup failed, though the sys.path append above should catch it
     print("Warning: Could not import src.utils.config. Checking paths...")
-    # Attempt to define PATHS manually for the script to function if import fails
-    # This is a fallback to allow the script to at least print errors
     PATHS = {
         'out_roster_prediction': os.path.join(current_dir, 'data', 'output', 'roster_prediction'),
         'input': os.path.join(current_dir, 'data', 'input')
@@ -55,45 +52,51 @@ def run_command(description: str, command: list, env: dict = None):
 
 
 def main():
-    print("""
+    parser = argparse.ArgumentParser(description="Run projection backtest for a specific year")
+    parser.add_argument('--year', type=int, default=2025, 
+                        help="The target projection year to test (default: 2025)")
+    args = parser.parse_args()
+
+    target_year = args.year
+    base_year = target_year - 1
+
+    print(f"""
 ╔══════════════════════════════════════════════════════════════════╗
-║           BACKTEST: 2025 PROJECTION VALIDATION                   ║
+║           BACKTEST: {target_year} PROJECTION VALIDATION                   ║
 ║                                                                  ║
-║   Using 2024 data to project 2025, then comparing to actuals     ║
+║   Using {base_year} data to project {target_year}, then comparing to actuals     ║
 ╚══════════════════════════════════════════════════════════════════╝
     """)
     
     # 1. Setup Paths
-    # The script is likely at the project root
     project_root = os.path.dirname(os.path.abspath(__file__))
     
-    # We need to set PYTHONPATH for subprocesses so they can resolve 'from src.utils...'
-    # This creates a copy of the current environment and adds the project root to it
+    # Set PYTHONPATH
     env = os.environ.copy()
     env["PYTHONPATH"] = project_root + os.pathsep + env.get("PYTHONPATH", "")
 
-    # Define paths to the workflow scripts (UPDATED to src/workflows/backtest/)
+    # Define paths to the workflow scripts
     roster_script = os.path.join(project_root, 'src', 'workflows', 'backtest', 'roster_prediction_backtest.py')
     extract_script = os.path.join(project_root, 'src', 'workflows', 'backtest', 'extract_actuals.py')
     compare_script = os.path.join(project_root, 'src', 'workflows', 'backtest', 'compare_projections.py')
 
-    # --- Step 1: Generate 2025 Projections from 2024 Data ---
+    # --- Step 1: Generate Projections ---
     success = run_command(
-        "Generate 2025 roster projections (from 2024 data)",
+        f"Generate {target_year} roster projections (from {base_year} data)",
         [sys.executable, roster_script,
-         '--base-year', '2024',
-         '--projection-year', '2025',
+         '--base-year', str(base_year),
+         '--projection-year', str(target_year),
          '--output-suffix', '_backtest'],
         env=env
     )
     if not success:
         return
     
-    # --- Step 2: Extract Actual 2025 Stats ---
+    # --- Step 2: Extract Actual Stats ---
     success = run_command(
-        "Extract actual 2025 statistics",
+        f"Extract actual {target_year} statistics",
         [sys.executable, extract_script,
-         '--year', '2025'],
+         '--year', str(target_year)],
         env=env
     )
     if not success:
@@ -101,11 +104,11 @@ def main():
     
     # --- Step 3: Compare Projections to Actuals ---
     backtest_dir = os.path.join(PATHS['out_roster_prediction'], 'backtest')
-    projection_file = os.path.join(backtest_dir, '2025_roster_prediction_backtest.csv')
-    actuals_file = os.path.join(backtest_dir, '2025_actual_stats.csv')
+    projection_file = os.path.join(backtest_dir, f'{target_year}_roster_prediction_backtest.csv')
+    actuals_file = os.path.join(backtest_dir, f'{target_year}_actual_stats.csv')
     
     # Check for game results file (optional)
-    results_file = os.path.join(PATHS['input'], 'rocky_mountain_results_2025.csv')
+    results_file = os.path.join(PATHS['input'], f'rocky_mountain_results_{target_year}.csv')
     simulation_file = os.path.join(backtest_dir, 'rocky_mountain_monte_carlo_backtest.csv')
     
     compare_cmd = [
@@ -135,15 +138,10 @@ def main():
 
 Output files in: {backtest_dir}
 
-  - 2025_roster_prediction_backtest.csv  (what we projected)
-  - 2025_actual_stats.csv                (what actually happened)
-  - player_projection_accuracy.csv       (player-level comparison)
-  - team_ranking_accuracy.csv            (team-level comparison)
-
-To add game-by-game comparison:
-  1. Create rocky_mountain_schedule_2025.csv in data/input/
-  2. Create rocky_mountain_results_2025.csv with columns: Date, Opponent, Result (W/L)
-  3. Run the game simulator separately, then re-run this script
+  - {target_year}_roster_prediction_backtest.csv  (Projected)
+  - {target_year}_actual_stats.csv                (Actual)
+  - player_projection_accuracy.csv       (Comparison)
+  - team_ranking_accuracy.csv            (Comparison)
     """)
 
 
