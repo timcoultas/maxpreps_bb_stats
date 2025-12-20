@@ -173,6 +173,8 @@ def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"
     team_rankings['Total_Power_Index'] = ((team_rankings['Offense_Index'] + team_rankings['Pitching_Index']) / 2).round(1)
     team_rankings = team_rankings.sort_values('Total_Power_Index', ascending=False).reset_index(drop=True)
     
+    team_rankings['Rank'] = team_rankings.index + 1
+
     # Display Report
     print(f"\n=== {year_label} TEAM POWER RANKINGS (SENIORITY ADJUSTED) ===")
     print(f"Weights: Senior ({MODEL_CONFIG['WEIGHT_SENIOR']}x), Junior ({MODEL_CONFIG['WEIGHT_JUNIOR']}x), Underclass ({MODEL_CONFIG['WEIGHT_UNDERCLASS']}x)\n")
@@ -185,7 +187,7 @@ def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"
     for idx, row in team_rankings.head(25).iterrows():
         team_display = str(row['Team'])[:30]
         ace_display = str(row['Ace_Pitcher'])[:16]
-        print(f"{idx+1:<5} {team_display:<32} {row['Total_Power_Index']:<6} {row['Offense_Index']:<6} {row['Pitching_Index']:<6} {ace_display:<18} {row['Returning_Players']:<4} {row['Returning_Seniors']:<4} {row['Avg_Varsity_Years']:<4}")
+        print(f"{int(row['Rank']):<5} {team_display:<32} {row['Total_Power_Index']:<6} {row['Offense_Index']:<6} {row['Pitching_Index']:<6} {ace_display:<18} {row['Returning_Players']:<4} {row['Returning_Seniors']:<4} {row['Avg_Varsity_Years']:<4}")
 
     output_dir = PATHS['out_team_strength']
     os.makedirs(output_dir, exist_ok=True)
@@ -193,6 +195,8 @@ def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"
     filename = f'{year_label}_team_strength_rankings.csv' if year_label != "2026" else 'team_strength_rankings.csv'
     save_path = os.path.join(output_dir, filename)
     
+    df_order = ['Rank','Team','Total_Power_Index','Offense_Index','Pitching_Index']
+    team_rankings = team_rankings[df_order]
     team_rankings.to_csv(save_path, index=False)
     print(f"\nSaved weighted rankings to: {save_path}")
 
