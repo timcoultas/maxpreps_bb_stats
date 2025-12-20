@@ -191,12 +191,23 @@ def analyze_team_power_rankings(input_file: str = None, year_label: str = "2026"
 
     output_dir = PATHS['out_team_strength']
     os.makedirs(output_dir, exist_ok=True)
-    
+
     filename = f'{year_label}_team_strength_rankings.csv' if year_label != "2026" else 'team_strength_rankings.csv'
     save_path = os.path.join(output_dir, filename)
-    
-    df_order = ['Rank','Team','Total_Power_Index','Offense_Index','Pitching_Index']
-    team_rankings = team_rankings[df_order]
+
+    df_order = ['Rank','Team','Total_Power_Index','Offense_Index','Pitching_Index','Offense_Raw','Pitching_Raw','Returning_Players','Total_Varsity_Years',
+                'Returning_Seniors','Returning_Juniors','Returning_Sophs','Top_Hitter','Top_Hitter_RC','Ace_Pitcher','Ace_Score']
+    column_aliases = {
+    'Total_Power_Index': 'Power Index',
+    'Offense_Raw': 'Runs_Created',
+    'Pitching_Raw': 'Total_Pitching',
+    'Ace_Pitcher': 'Top_Pitcher',
+    'Ace_Score': 'Top_Pitcher_Score'}
+
+    team_rankings = team_rankings[df_order].rename(columns=column_aliases)
+
+    team_rankings = team_rankings.round({'Runs_Created':2 , 'Total_Pitching':2,'Top_Hitter_RC':2,'Top_Pitcher_Score':2 })
+
     team_rankings.to_csv(save_path, index=False)
     print(f"\nSaved weighted rankings to: {save_path}")
 

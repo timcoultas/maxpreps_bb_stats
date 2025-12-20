@@ -87,7 +87,7 @@ ELITE_TEAMS = [
 MODEL_CONFIG = {
     # Ranking Logic (Team Strength)
     'TOP_N_BATTERS': 9,
-    'TOP_N_PITCHERS': 6,
+    'TOP_N_PITCHERS': 5,
     'MIN_RC_SCORE': 0.1,       # Minimum score to be considered a viable batter
     'MIN_PITCHING_SCORE': 0.1, # Minimum score to be considered a viable pitcher
     
