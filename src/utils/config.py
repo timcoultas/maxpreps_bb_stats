@@ -81,7 +81,16 @@ ELITE_TEAMS = [
     "Mountain Vista (Highlands Ranch, CO)",
     "Cherokee Trail (Aurora, CO)",
     "Regis Jesuit (Aurora, CO)", 
-    "Rocky Mountain (Fort Collins, CO)" 
+    "Rocky Mountain (Fort Collins, CO)",
+    "Casteel (Queen Creek, AZ)",
+    "Basic (Henderson, NV)",
+    "Red Mountain (Mesa, AZ)",
+    "Queen Creek (AZ)",
+    "Corona del Sol (Tempe, AZ)",
+    "Mountain View (Mesa, AZ)",
+    "Riverton (UT)",
+    "Horizon (Scottsdale, AZ)",
+    "Chaparral (Scottsdale, AZ)"
 ]
 
 MODEL_CONFIG = {
