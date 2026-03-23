@@ -13,7 +13,6 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 from src.etl.metadata import extract_metadata
 from src.etl.stat_extraction import extract_player_data
 from src.etl.class_inference import infer_missing_classes
-# [NEW] Import the fix script
 from src.etl.class_cleansing import fix_class_progression 
 from src.utils.config import STAT_SCHEMA
 from src.utils.config import PATHS
@@ -30,7 +29,7 @@ except ImportError as e:
     print(f"Warning: Could not import analytics modules. Pipeline will run ETL only.\nError: {e}")
 
 # ==============================================================================
-# 1. CORE ETL FUNCTIONS (Unchanged)
+# 1. CORE ETL FUNCTIONS 
 # ==============================================================================
 
 def process_single_file(file_path):
@@ -115,13 +114,13 @@ def run_analytics_chain():
     print("\n--- Step 4: Analyzing Team Strength ---")
     analyze_team_power_rankings()
 
-    #step 5: Run Game Simulator
+    # Step 5: Run Game Simulator
     print("\n--- Step 5: Game Simulator ---")
     simulate_games()
 
 def main():
     parser = argparse.ArgumentParser(description="Run Full Baseball Analytics Pipeline")
-    parser.add_argument('--period', type=str, required=True, help='Target subfolder (e.g., history, 2025)')
+    parser.add_argument('--period', type=str, required=True, help='Target subfolder (e.g., history, 2026)')
     parser.add_argument('--teams', nargs='+', default=['all'], help='Specific teams to process')
     parser.add_argument('--skip-analysis', action='store_true', help='If set, stops after ETL and does not run projections')
     parser.add_argument('--run-analysis-only', action='store_true', help='If set, skips ETL and runs only the analytics chain')
@@ -167,7 +166,8 @@ def main():
             team_data.extend(file_results)
             
         if team_data:
-            save_dataframe(team_data, processed_team_dir, f"{team}_{args.period}_stats.csv")
+            # FIX: Matches the exact filename you requested for output: {period}_statistics.csv
+            save_dataframe(team_data, processed_team_dir, f"{args.period}_statistics.csv")
             consolidated_data.extend(team_data)
 
     if consolidated_data:
@@ -189,7 +189,13 @@ def main():
         df_consolidated = df_consolidated.reindex(columns=final_cols)
 
         consolidated_dir = PATHS['out_historical_stats']
-        save_dataframe(df_consolidated.to_dict('records'), consolidated_dir, "aggregated_stats.csv")
+        
+        # [FIX] Protect the master historical file! 
+        # Technical Implementation: If running anything other than "history", save it to an isolated file.
+        # This prevents mid-season data (e.g., 2026) from overwriting the core historical training set (2022-2025).
+        master_file_name = "aggregated_stats.csv" if args.period == 'history' else f"aggregated_{args.period}_stats.csv"
+        
+        save_dataframe(df_consolidated.to_dict('records'), consolidated_dir, master_file_name)
         
         # --- PHASE 2: ANALYTICS CHAIN ---
         # Only run if we actually processed data and user didn't skip it
