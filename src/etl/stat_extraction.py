@@ -67,12 +67,17 @@ def extract_player_data(soup, metadata):
                     class_year = class_tag.get('title', 'Unknown') if class_tag else 'Unknown'
                     ### [END NEW CODE] ----------------------------------------
 
+                     # Look for the <td> tag with class "jersey" in the current row
+                    jersey_td = row.find('td', class_='jersey')
+                    jersey_number = jersey_td.text.strip() if jersey_td else ""
+
                     roster[athlete_id] = {
                         # Add Metadata Context (Denormalization: adding header info to line items)
                         **metadata,
                         
                         # Player Identity
                         ### [MODIFIED LINE] Changed 'Name' to use full_name
+                        'Jersey': jersey_number,
                         'Full_Name': full_name, 
                         
                         ### [NEW LINES] Added Display_Name and Class_Year

@@ -56,7 +56,7 @@ def save_dataframe(data_list, output_folder, file_name):
     # This catches players listed as Sophomores two years in a row
     df = fix_class_progression(df)
 
-    fixed_cols = ['Season', 'Season_Cleaned', 'Team', 'Level', 'Source_File', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
+    fixed_cols = ['Season', 'Season_Cleaned', 'Team', 'Level', 'Source_File', 'Jersey', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
     schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]
     
     final_cols = fixed_cols + [c for c in schema_cols if c in df.columns]
@@ -183,7 +183,7 @@ def main():
         df_consolidated = fix_class_progression(df_consolidated)
 
         # Ensure correct column order
-        fixed_cols = ['Season', 'Season_Cleaned', 'Team', 'Level', 'Source_File', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
+        fixed_cols = ['Season', 'Season_Cleaned', 'Team', 'Level', 'Source_File', 'Jersey', 'Name', 'Class', 'Class_Cleaned', 'Athlete_ID']
         schema_cols = [stat['abbreviation'] for stat in STAT_SCHEMA]
         final_cols = fixed_cols + [c for c in schema_cols if c in df_consolidated.columns]
         df_consolidated = df_consolidated.reindex(columns=final_cols)
