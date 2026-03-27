@@ -51,6 +51,7 @@ for index, row in teams_df.iterrows():
     team_name = row['team']
     team_rank = row['chsaa_rank']
     is_league = row['league']
+    other_opponent = row['other_opponent']
     url = row['schedule_url']
     
     print(f"Fetching: {team_name}")
@@ -61,6 +62,7 @@ for index, row in teams_df.iterrows():
         game['Team'] = team_name
         game['Rank'] = team_rank
         game['League'] = is_league
+        game['Other'] = other_opponent
         all_games.append(game)
         
     # Be polite to the Cloudflare bouncers

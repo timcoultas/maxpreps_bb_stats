@@ -64,7 +64,7 @@ def save_dataframe(data_list, output_folder, file_name):
 
     # Sort before saving
     if all(col in df.columns for col in ['Team', 'Name', 'Season_Cleaned']):
-        df = df.sort_values(by=['Team', 'Name', 'Season_Cleaned'])
+        df = df.sort_values(by=['Team', 'Jersey', 'Season_Cleaned'])
     
     os.makedirs(output_folder, exist_ok=True)
     out_path = os.path.join(output_folder, file_name)
