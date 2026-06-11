@@ -62,7 +62,7 @@ for index, row in teams_df.iterrows():
         game['Team'] = team_name
         game['Rank'] = team_rank
         game['League'] = is_league
-        game['Other'] = other_opponent
+        game['Other_Opponents'] = other_opponent
         all_games.append(game)
         
     # Be polite to the Cloudflare bouncers
@@ -72,7 +72,7 @@ for index, row in teams_df.iterrows():
 master_df = pd.DataFrame(all_games)
 
 # Reorder columns so Team is first
-master_df = master_df[['Team', 'Rank', 'League', 'Date', 'Opponent', 'Time/Result']]
+master_df = master_df[['Team', 'Rank', 'League', 'Other_Opponents', 'Date', 'Opponent', 'Time/Result']]
 # print(master_df)
 # 5. Export
 schedule_roundup_file = os.path.join('data','output','schedule_roundup', 'schedule_roundup.csv')
